@@ -3,12 +3,12 @@ import maya.cmds
 import math
 
 
-ver = ' : ver 01.005 ' # This needs to be updated each time the script is updated or modified.
-comment = 'Added setUpGroups function'
-print ("#### Imported Utilities Module " + ver)
+ver = ' : ver 01.011 ' # This needs to be updated each time the script is updated or modified.
+comment = 'Added getBBSize and getBBCenter functions'
+print ("#### Imported Utilities Module " + ver + " : " + comment )
 
 def getVersion():
-	print ("Imported Utilities Module " + ver)
+	print ("Imported Utilities Module " + ver + " : " + comment )
 
 """
 USAGE : Loops through a list of Nodes add selected Attribute to Selected Object and connect it to a Source Object.
@@ -184,8 +184,181 @@ def connectAttrMulti(srcObj,destArray,srcAxis,destAxis,srcAttr,destAttr):
 				if(increment >= len(destArray)):
 					brk = 1
 					#print( "utilities.connectAttrMulti.brk = " + str(brk) )
-		
 
+
+
+
+
+					
+
+"""
+USAGE : Simplifies the grouping structure under a selected group node. It will reparent all selected items and reparent them under the selected destination node.
+It offers a clean up option to remove all non selected items and sub groups of the source group (src_grp). 
+Generally, the function was designed to have the source (src_grp) and destination group (dest_grp) to be the same, therefore the clean up option for the group nodes does not include
+the source group (src_grp)
+
+REQUIRES:
+1. utilities.getGroupNode
+
+INPUTS :
+1. src_grp = String
+2. dest_grp = String
+3. include_types = String Array (DO NOT INCLUDE MESH TYPE)
+4. remove_others = Boolean 
+5. keep_shapes = Boolean (This ensures that shape nodes parented to transform nodes are not deleted and their relationship remains.
+
+OUTPUT :
+1. result = Boolean
+
+NOTES : 
+1. NA
+""" 
+def consolidateGroup(src_grp,dest_grp,include_types,remove_others,keep_shapes):
+    listed = False
+    nodes_to_delete = []
+    groups_to_delete = []
+    keep_mesh = 'removeMeshes'
+    if keep_shapes:
+        keep_mesh = 'mesh'
+    """
+    Get all of the descendents and
+    reparent them to src_grp directly.
+    """
+    #get_all_children = maya.cmds.listRelatives(src_grp,allDescendents=True,type="transform",path=True)
+    get_all_children = maya.cmds.listRelatives(src_grp,allDescendents=True,path=True)
+    if get_all_children is not None :
+        for g in get_all_children:
+            """
+            Step 1.
+            Loop through all items and check 
+            that it is not a Group node.
+            If it is a Group node, store it in 
+            the nodes_to_delete array, for 
+            future deletion.
+            """
+            isGroup = getGroupNode(g)
+            
+            if isGroup == False:
+                """
+                Step 2.
+                Check the object type,
+                if not listed in include_types
+                and remove_extras is True, then
+                add it to the nodes_to_delete array, for 
+                future deletion.
+                """
+                type = maya.cmds.objectType(g)
+            
+                for i in include_types:
+                    if type == str(i):
+                        listed = True
+                        continue
+          
+                if listed == True:
+                    """
+                    Step 3.
+                    Check to make sure that g is not already 
+                    parented to dest_grp.
+                    If so, no further action is required
+                    If not, reparent the item to the dest_grp.
+                    """
+                    who_is_my_parent = maya.cmds.listRelatives(g,parent=True)[0]
+                    
+                    if who_is_my_parent != dest_grp:
+                        maya.cmds.parent(g,dest_grp)
+                        
+                else:
+                    if remove_others == True:
+                        if type != keep_mesh:
+                            nodes_to_delete.append(g)
+            
+            else:
+                groups_to_delete.append(g)
+                
+            """
+            Reset loop variables
+            """
+            listed = False
+
+        """
+        Step 4.
+        Clean up Groups
+        """
+        if nodes_to_delete:
+            for n in nodes_to_delete:
+                maya.cmds.select(n)
+                maya.cmds.delete()
+                
+        if groups_to_delete:
+            for d in groups_to_delete:
+                maya.cmds.select(d)
+                maya.cmds.delete()
+				
+
+
+				
+				
+"""
+USAGE : This is an extension on the consolidateGroup function.
+Simplifies the grouping structure under a selection of child group nodes of the top_src_grp. 
+It will reparent all selected items and reparent them under the selected destination node.
+Select the TOP GROUP node. This group node will have child nodes. If the CHILD NODES are a group type, these groups will be consolidated.
+Consolidation means that all SUB GROUPS will be removed, and the nodes parented to them will be reparented their related CHILD NODES.
+It offers a clean up option to remove all non selected items and sub groups of the source group (src_grp). 
+Generally, the function was designed to have the source (src_grp) and destination group (dest_grp) to be the same, therefore the clean up option for the group nodes does not include
+the source group (src_grp)
+
+REQUIRES:
+1. utilities.getGroupNode
+2. utilities.consolidateGroup
+
+INPUTS :
+1. top_src_grp = String
+2. include_types = String Array (DO NOT INCLUDE MESH TYPE)
+3. remove_others = Boolean 
+4. keep_shapes = Boolean (This ensures that shape nodes parented to transform nodes are not deleted and their relationship remains.
+
+OUTPUT :
+1. result = Boolean
+
+NOTES : 
+1. NA
+""" 				
+				
+				
+def consolidateGroupChildren(top_src_grp,include_types,remove_others,keep_shapes):
+    list_sub_groups = []
+    
+    """
+    Select the TOP GROUP nodes children.
+    If these are group nodes, these will be the
+    groups that will be consolidated.
+    """
+    get_child_grps = maya.cmds.listRelatives(top_src_grp,children=True,path=True)
+
+
+    """
+    Check item type in get_tree_sect_grps variable:
+    1. if there are relatives listed, if not NONE type will be returned, and end app
+    2. if type is not Group type, end app
+    3. if Group type, continue
+    """
+    if get_child_grps is not None :
+        for chld in get_child_grps:
+            """
+            Make sure t is a Group type.
+            If it is a group type,
+            this will be the CHILD NODE to be consolidated.
+            """
+            isGroup = getGroupNode(chld)
+        
+            if isGroup:
+                """
+                Get all of the descendents and
+                reparent them to chld directly.
+                """
+                consolidateGroup(chld,chld,include_types,remove_others,keep_shapes)				
+				
 """
 USAGE : TODO
 
@@ -420,7 +593,119 @@ def findReplace(find,replace):
 	getGroup = maya.cmds.textFieldButtonGrp( windowName + '_grp', q=True, text=True )
 	groupDim = getGroup.split()
 
+	
+"""
+USAGE :  Adds zeros in front of a Integer
 
+REQUIRES:
+1. NA
+
+INPUTS :
+1. number = Integer
+2. padding = Integer : Amount of Zeros to be added in front of the number
+
+OUTPUT :
+1. result = String
+
+NOTES : 
+1. NA
+
+"""
+def framePadding(number,padding):
+    
+    result = ''
+    
+    """
+    Create a String Variable to 
+    define the amount of padding
+    i.e. '10','100','1000'
+    """
+    pad_num = '1'
+    for i in range(padding):
+        pad_num += '0'
+    
+    """
+    Prefix the Variable number with the appropriate
+    amount of zeroes to ensure the correct frame padding
+    is returned as a String Variable.
+    
+    Get the length of the String of Characters
+    for the Variables pad_num and number, 
+    then subtract the length of the Varaible number
+    from the length of pad_num.
+    
+    If the condition is met where the result is greater than Zero,
+    then concatenate the String of zero Characters 
+    that make up the Variable pad_num (e.g. '000' for '1000')
+    to the Variable number (converted to a String)
+    i.e. '0' + '7' = '07'; '00' + '7' = '007'; '000' + '7' = '0007' .....
+    
+    Else, if the condition is not met, then simply
+    return the Variable number as a String.
+    
+    """
+    if ( len(str(pad_num)) - len(str(number)) ) > 0:
+        result = pad_num[1:len(pad_num)] + str(number)
+    else:
+        result = str(number)
+        
+    return result
+	
+	
+	
+"""
+USAGE :  Get the size of the 3 axis of a objects bounding box.
+
+REQUIRES:
+1. NA
+
+INPUTS :
+1. pointA = Vector
+2. pointB = Vector
+
+OUTPUT :
+1. distance
+
+NOTES : 
+1. NA
+""" 
+def getBBSize(obj):
+    sizeX = maya.cmds.getAttr(obj + '.boundingBoxSizeX')
+    sizeY = maya.cmds.getAttr(obj + '.boundingBoxSizeY')
+    sizeZ = maya.cmds.getAttr(obj + '.boundingBoxSizeZ')
+    
+    return [sizeX,sizeY,sizeZ]
+	
+	
+	
+	
+"""
+USAGE :  Get the centre of the 3 axis of a objects bounding box.
+
+REQUIRES:
+1. NA
+
+INPUTS :
+1. pointA = Vector
+2. pointB = Vector
+
+OUTPUT :
+1. distance
+
+NOTES : 
+1. NA
+""" 
+def getBBCenter(obj):
+    centerX = maya.cmds.getAttr(obj + '.boundingBoxCenterX')
+    centerY = maya.cmds.getAttr(obj + '.boundingBoxCenterY')
+    centerZ = maya.cmds.getAttr(obj + '.boundingBoxCenterZ')
+    
+    return [centerX,centerY,centerZ]
+
+	
+	
+	
+	
 """
 USAGE :  Get the distance between two points.
 
@@ -443,6 +728,59 @@ def getDistance2Vectors(pointA,pointB):
 	distance = math.sqrt(  math.pow(sp[0]-ep[0],2) + math.pow(sp[1]-ep[1],2) + math.pow(sp[2]-ep[2],2)  )
 	return distance
 
+	
+"""
+USAGE : Test if obj is a Group node.
+
+REQUIRES:
+1. getShapeNodes()
+
+INPUTS :
+1. obj = String
+
+OUTPUT :
+1. result = Boolean
+
+NOTES : 
+1. NA
+""" 
+def getGroupNode(obj):
+	result = False
+	
+	# Rule out all other Types by testing if 
+	# it is a Transform node with no Shape nodes.
+	type = maya.cmds.objectType(obj)
+	if type == 'transform':
+		# Rule out Transform nodes that have a Shape node.
+		getShape = getShapeNodes(obj)[0]
+		if(getShape == None):
+			result = True
+	
+	return result
+	
+"""
+USAGE :  TODO
+
+REQUIRES:
+1. NA
+
+INPUTS :
+1. aimAxis = Vecor
+
+OUTPUT :
+1. transform
+
+NOTES : 
+1. NA
+""" 	
+def getPitchAxis(aimAxis,upAxis):
+	pitchAxis = 'x'
+	if(aimAxis == 'x' and upAxis == 'z'):
+		pitchAxis = 'y'
+	elif(aimAxis == 'x' and upAxis == 'y'): 
+		pitchAxis = 'z'
+	
+	return pitchAxis	
 
 """
 USAGE : Gets the String name of the Shape Node that is connected to the Maya Transforms node listed in the functions argument.
@@ -464,7 +802,7 @@ def getShapeNodes(obj):
 	howManyShapes = 0
 	getShape = maya.cmds.listRelatives(obj, shapes=True)
 	if(getShape == None):
-		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+		print 'NOTIFICATION :: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
 	else:
 		howManyShapes = len(getShape[0])
 	return (getShape, howManyShapes)
@@ -511,29 +849,7 @@ def getWStransform(obj):
 
 
 
-"""
-USAGE :  TODO
 
-REQUIRES:
-1. NA
-
-INPUTS :
-1. aimAxis = Vecor
-
-OUTPUT :
-1. transform
-
-NOTES : 
-1. NA
-""" 	
-def getPitchAxis(aimAxis,upAxis):
-	pitchAxis = 'x'
-	if(aimAxis == 'x' and upAxis == 'z'):
-		pitchAxis = 'y'
-	elif(aimAxis == 'x' and upAxis == 'y'): 
-		pitchAxis = 'z'
-	
-	return pitchAxis
 
 
 def getVector(axis):

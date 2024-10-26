@@ -1,0 +1,53 @@
+//SET UP THE IK FK SWITCH
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1.make sure that the joints have a unique name
+//2.select deform joints for the arm wrist to upperArm1
+//3.
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+
+
+string $prefixIK = "IK_";
+string $prefixFK = "FK_";
+string $grpNode = "L_DEFORM_arm_tweak_GRP";
+string $parentConstraints[];
+
+
+for($i = 0; $i< $howManyJoints; $i++){
+
+	select -r ($prefixIK + $sel[$i]);
+	select -add ($grpNode + ($i + 1));
+
+	string $subSel[] = `ls -sl`;
+
+	string $parent[] = `parentConstraint $subSel[0] $subSel[1]`;
+
+
+	select -r ($prefixFK + $sel[$i]);
+	select -add ($grpNode + ($i + 1));
+
+	string $subSel[] = `ls -sl`;
+
+	string $parent[] = `parentConstraint $subSel[0] $subSel[1]`;
+
+	$parentConstraints[$i] = $parent[0];
+
+}
+
+print $parentConstraints;
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

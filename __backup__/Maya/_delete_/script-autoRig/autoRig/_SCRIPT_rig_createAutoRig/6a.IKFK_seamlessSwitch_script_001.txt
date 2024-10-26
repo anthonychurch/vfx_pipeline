@@ -1,0 +1,60 @@
+addAttr -ln IKFK -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_arm_poleVector -at message L_IKFK_arm_CTRL;
+
+//connectAttr -f L_IKFK_arm_CTRL.message L_IKFK_arm_CTRL.IkFk;
+connectAttr -f L_FK_shoulder_CTRL.message L_IKFK_arm_CTRL.FK_shoulder;
+connectAttr -f L_FK_elbow_CTRL.message L_IKFK_arm_CTRL.FK_elbow;
+connectAttr -f L_FK_wrist_LOC.message L_IKFK_arm_CTRL.FK_wrist;
+connectAttr -f L_FK_arm_poleVector_tracking_LOC.message L_IKFK_arm_CTRL.FK_arm_poleVector;
+connectAttr -f L_IK_shoulder_tracking_LOC.message L_IKFK_arm_CTRL.IK_shoulder;
+connectAttr -f L_IK_elbow_tracking_LOC.message L_IKFK_arm_CTRL.IK_elbow;
+connectAttr -f L_IK_wrist_CTRL.message L_IKFK_arm_CTRL.IK_wrist;
+connectAttr -f L_IK_arm_poleVector_CTRL.message L_IKFK_arm_CTRL.IK_arm_poleVector;
+
+
+//FK 2 IK
+string $selection[] = `ls -sl`;
+//string $IKFK[] = `listConnections ($selection[0] + ".IkFk")`;
+string $FKshoulder[] = `listConnections ($selection[0] + ".FK_shoulder")`;
+//string $FKelbow[] = `listConnections ($selection[0] + ".FK_elbow")`;
+//string $FKwrist[] = `listConnections ($selection[0] + ".FK_wrist")`;
+//string $FKpoleVector[] = `listConnections ($selection[0] + ".FK_arm_poleVector")`;
+//string $IKshoulder[] = `listConnections ($selection[0] + ".IK_shoulder")`;
+//string $IKelbow[] = `listConnections ($selection[0] + ".IK_elbow")`;
+//string $IKwrist[] = `listConnections ($selection[0] + ".IK_wrist")`;
+//string $IKpoleVector[] = `listConnections ($selection[0] + ".IK_arm_poleVector")`;
+int $time = `currentTime -q`;
+currentTime -edit ($time - 1);
+//setKeyframe ($IKFK[0] + ".IkFk");
+//setKeyframe (FKshoulder[0] + ".rotate");
+//setKeyframe ($FKelbow[0] + ".rotate");
+//setKeyframe ($FKwrist[0] + ".rotate");
+//currentTime -edit $time;
+float $shoulder[] = `xform -q -ws -t $FKshoulder[0]`;
+float $shoulderRotate[] = `xform -q -ws -ro L_IK_shoulder_tracking_LOC`;
+float $elbowRotate[] = `xform -q -ws -ro L_IK_elbow_tracking_LOC`;
+select "L_FK_shoulder_CTRL";
+xform -ws -ro $shoulderRotate[0] $shoulderRotate[1] $shoulderRotate[2];
+select "L_FK_elbow_CTRL";
+xform -ws -ro $elbowRotate[0] $elbowRotate[1] $elbowRotate[2] L_IK_elbow_tracking_LOC;
+
+
+string $sel[] = `ls -sl`;
+
+float $rotate1[] = `xform -q -ws -ro $sel[0]`;
+float $translate1[] = `xform -q -ws -t $sel[0]`;
+
+
+float $rotate2[] = `xform -q -ws -ro $sel[1]`;
+float $translate2[] = `xform -q -ws -t $sel[1]`;
+
+print ($rotate1);
+
+print ($rotate2);

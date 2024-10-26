@@ -1,0 +1,82 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CREATE STRETCHY FK CONNECTIONS FOR THE ARM FK SETUP JOINTS=========================================================================================================================
+//INSTRUCTIONS;
+//1.
+//2.
+
+string $sel[] = `ls -sl`;
+string $last[] = `ls -sl -tail 1`;
+float $size = size($sel) - 1;
+int $i;
+int $j;
+string $char = "_CTRL";
+
+string $attribute = ".translate";
+string $IKFK = ".SpineIkFK";
+
+string $setRangeNode = `shadingNode -n "IKFK_spine_setRange1" -asUtility setRange`;
+
+string $IKCTRL[];
+string $FKCTRL[];
+
+string $connector = $last[0] + $IKFK;
+string $socket = $setRangeNode + ".valueX";
+connectAttr -force  $connector  $socket;
+
+string $socket = $setRangeNode + ".valueY";
+connectAttr -force  $connector  $socket;
+
+setAttr ($setRangeNode + ".oldMaxX") 10;
+setAttr ($setRangeNode + ".oldMaxY") 10;
+setAttr ($setRangeNode + ".maxX") 1;
+setAttr ($setRangeNode + ".minY") 1;
+
+
+
+for($i = 0; $i < $size; $i++){
+	string $listConnections[] = `listConnections -d on -s off ($sel[$i] + $attribute)`;
+	//print ($listConnections);
+	string $listAttr[] = `listAttr -st ($sel[$i] + "W*") $listConnections[0]`;
+	//print ($listAttr);
+	float $sizeListAttr = size($listAttr);
+	string $prefix = `substring $listAttr[0] 1 2`;
+	//print ($prefix);
+
+	if($prefix == "IK"){
+		//print("IK");
+		$connector = $setRangeNode + ".outValueX";
+		$socket = $listConnections[0] + "." + $listAttr[0];
+		connectAttr -force  $connector  $socket;
+		$IKCTRL[$i] = $sel[$i];
+	}else{
+		//print("FK");
+		$connector = $setRangeNode + ".outValueY";
+		$socket = $listConnections[0] + "." + $listAttr[0];
+		connectAttr -force  $connector  $socket;
+		$FKCTRL[$i] = $sel[$i];
+	}
+}
+
+$size = size($IKCTRL);
+
+for($i = 0; $i < $size; $i++){
+	if(endsWith($IKCTRL[$i], $char) == 1){
+		$connector = $setRangeNode + ".outValueX";
+		string $socket = $IKCTRL[$i] + ".visibility";
+		connectAttr -force  $connector  $socket;
+	}
+}
+
+$size = size($FKCTRL);
+
+for($i = 0; $i < $size; $i++){
+	if(endsWith($FKCTRL[$i], $char) == 1){
+		$connector = $setRangeNode + ".outValueY";
+		string $socket = $FKCTRL[$i] + ".visibility";
+		connectAttr -force  $connector  $socket;
+	}
+} 
+
+
+
+

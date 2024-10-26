@@ -1,0 +1,38 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CONNECT finger joints       ======================================================
+//Index Finger==============================================================================================
+//Instruction
+//1.ensure that all the fingers have a control curve that has the following attributes ".MiddleJoint", ".LastJoint"
+//2.select the fingers starting with the number2 joint to the end. Select the control curve LAST!
+
+string $sel[] = `ls -sl`;//select control last and select joint on first
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $size = size($sel)-1;
+
+string $scaleSplineAttrName = "scaleSpline";
+string $scaleSplineAttr = "." + $scaleSplineAttrName;
+
+int $i;
+
+
+addAttr -ln $scaleSplineAttrName  -at double  -min 0 -max 30 -dv 1 $last[0];
+setAttr -e-keyable true ($last[0] + $scaleSplineAttr);
+
+for($i = 0; $i < $size; $i++){
+
+	connectAttr -force  ($last[0] + $scaleSplineAttr) ($sel[$i] + ".scaleX");
+	connectAttr -force  ($last[0] + $scaleSplineAttr) ($sel[$i] + ".scaleY");
+	connectAttr -force  ($last[0] + $scaleSplineAttr) ($sel[$i] + ".scaleZ");
+
+	setAttr -lock true -keyable false -channelBox false ($sel[$i] + ".sx");
+	setAttr -lock true -keyable false -channelBox false ($sel[$i] + ".sy");
+	setAttr -lock true -keyable false -channelBox false ($sel[$i] + ".sz");
+}
+
+
+//============================================================================================================
+//============================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

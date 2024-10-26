@@ -1,0 +1,184 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET
+//print("__________________________SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET__________________________");
+//INSTRUCTIONS:
+//1. Ensure that the SPL CURVE is cluster with each cluster name base on the name of the SPL joint suffix with "_CLUSTER" that it correlates with
+//2. select the joints of the SPL arm joints starting from the start to the end then select the MASTER CTRL curve to be duplicated
+// 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel)-1;//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyControls;
+
+
+int $i;
+int $j;
+int $whichJoint; 
+int $count = 0;
+int $break = 0;
+
+int $howManyControlJointsInserted = 1;
+int $howManyJointsInserted = 6;//for spline IK
+int $divide = $howManyJointsInserted + 1;
+int $index = 0;
+
+
+float $howManyNodes = ceil(($howManyJoints/$divide) / 3);
+
+//print $howManyNodes;
+
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+string $IKJointPrefix = $sidePrefix + "IK_";
+string $FKJointPrefix = $sidePrefix + "FK_";
+string $splineJointPrefix = $sidePrefix + "SPL_";
+
+//ensure that the controllers are created
+string $IKwristCtrl = $sidePrefix + "IK_hand_CTRL";
+string $FKwristCtrl = $sidePrefix + "FK_elbow_CTRL";
+//string $IKfootLOC = $sidePrefix + "IK_ankle_LOC1";
+
+string $IKrotateMultiply = $sidePrefix + "IK_arm_rotator_multiplyDivide";
+string $FKrotateMultiply = $sidePrefix + "FK_arm_rotator_multiplyDivide";
+string $IKFKrotateBlend =  $sidePrefix + "IKFK_arm_blend";
+
+string $cluster = "_CLUSTER";
+
+string $armTweak_AV;
+
+
+string $IKrotateArry[];
+string $FKrotateArry[];
+string $IKFKrotateArry[];
+string $grpArry[];
+string $control[];
+
+
+
+
+
+//create the controls
+for($i = 0; $i < ceil($howManyJoints/$divide); $i++){
+	//select only the control joints
+	$index = $i * $divide;
+	//print ("$index = " + $index + ";   ");
+	
+	string $copy[] = `duplicate -n ($sel[$index] + "_CTRL") $last[0]`;
+	string $group1 = `group -n ($sel[$index] + "_AV") $copy[0]`;
+	string $group2 = `group -n ($sel[$index] + "_NULL") $group1`;
+	string $group3 = `group -n ($sel[$index] + "_GRP") $group2`;
+	$grpArry[$i] = $group3;
+	$control[$i] = $copy[0];
+	
+	
+	string $parentConstraint[] = `pointConstraint $sel[$index] $group3`;
+	delete $parentConstraint[0];
+		
+	
+	select -r $copy[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+}
+
+
+
+
+//create multiply and blend nodes 
+
+for ($i = 0; $i < $howManyNodes; $i++){
+
+	
+
+	string $multiplierNode = `shadingNode -n ($IKrotateMultiply + "1") -asUtility multiplyDivide`;
+	$IKrotateArry[$i] = $multiplierNode;
+	string $multiplierNode = `shadingNode -n ($FKrotateMultiply + "1") -asUtility multiplyDivide`;
+	$FKrotateArry[$i] = $multiplierNode;
+	string $multiplierNode = `shadingNode -n ($IKFKrotateBlend + "1") -asUtility blendColors`;
+	$IKFKrotateArry[$i] = $multiplierNode;
+
+
+	//Connect Multiple nodes to blend
+	int $offset = $i + 1;
+	
+	string $whichAxis[3] = {"X", "Y", "Z"};
+	string $whichColour[3] = {"R", "B", "G"};
+
+	
+	
+	for($j = 0; $j < $howManyNodes; $j++){
+		
+		if($break == 0){
+			string $IKconnector = $IKrotateArry[$i] + ".output" + $whichAxis[$j];//$IKrotate + $offset + ".output" + $whichAxis[$j];
+			string $FKconnector = $FKrotateArry[$i] + ".output" + $whichAxis[$j];//$FKrotate + $offset + ".output" + $whichAxis[$j];
+			string $IKsocket = $IKFKrotateArry[$i] + ".color1" + $whichColour[$j];//$IKFKrotate + $offset + ".color1" + $whichColour[$j];//IK
+			string $FKsocket = $IKFKrotateArry[$i] + ".color2" + $whichColour[$j];//$IKFKrotate + $offset + ".color2" + $whichColour[$j];//FK
+		
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//connect IK wrist control to Multiply nodes
+			string $IKsocket = $IKrotateArry[$i] + ".input1" + $whichAxis[$j];//$IKrotate + $offset + ".input1" + $whichAxis[$j];
+			string $FKsocket = $FKrotateArry[$i] + ".input1" + $whichAxis[$j];//$FKrotate + $offset + ".input1" + $whichAxis[$j];
+
+			string $IKconnector = $IKwristCtrl + ".rotateX";
+			string $FKconnector = $FKwristCtrl + ".rotateX";
+
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//increment up the suffix to conect to "L_armTweak_AV"
+			string $connector = $IKFKrotateArry[$i] + ".output" + $whichColour[$j];//$IKFKrotate + $offset + ".output" + $whichColour[$j];
+			string $socket = ($sel[$count] + "_AV") + ".rotateX";
+			//print($sel[$count] + "_AV;      ");
+		
+			connectAttr -force $connector $socket;
+
+			$count = $count + $divide;
+			
+			if($count > $howManyJoints){
+				$break = 1;
+				//print $count;
+			}
+		}
+	}
+}
+
+
+$count = 0;
+
+//
+for($i = 0; $i < ($howManyJoints/$divide); $i++){
+
+		print("$count = " + $count + ";      ");
+		print("$i = " + $i + ";      ");
+		//if($i < ceil($howManyJoints/$divide)-1){///////
+		string $IKJoint = substituteAllString($sel[$count], $splineJointPrefix, $IKJointPrefix);
+		string $FKJoint = substituteAllString($sel[$count], $splineJointPrefix, $FKJointPrefix);	
+		//}////////////
+		
+		string $deformJoint = substituteAllString($sel[$count], $splineJointPrefix, $sidePrefix);
+		
+	
+		if($howManyControlJointsInserted > 0){
+			
+			string $pointConstain[] = `pointConstraint -mo $control[$i] ($sel[$count] + $cluster)`;
+			string $pointConstain[] = `pointConstraint -mo $IKJoint $grpArry[$i]`;
+			string $pointConstain[] = `pointConstraint -mo $FKJoint $grpArry[$i]`;
+			
+			string $parentConstain[] = `parentConstraint -mo $sel[$count] $deformJoint`;
+			
+
+		} else {
+			string $parentConstain[] = `parentConstraint -mo $IKJoint $grpArry[$i]`;
+			string $parentConstain[] = `parentConstraint -mo $FKJoint $grpArry[$i]`;
+			string $parentConstain[] = `parentConstraint -mo $control[$i] $deformJoint`;
+		}
+
+		$count = $count + $divide;
+
+}
+
+

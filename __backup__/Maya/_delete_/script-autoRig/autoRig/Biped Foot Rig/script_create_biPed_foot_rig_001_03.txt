@@ -1,0 +1,65 @@
+//Find the position for foot, ball, toe and store them
+
+
+//select joints and store in an array. Store how many joints were selected
+//you must select ankle joint
+select -hi;
+string $footJoints[] = `ls -sl -type "joint"`;
+int $howManyJoints = size($footJoints);
+//string $sel[] = `ls -sl`;
+string $prefix = "TEMP_";//"R_";
+/*
+for ($i = 0; $i < $howManyJoints; $i++){
+
+}
+*/
+//tipToe locator and position it**************************************************************START*******tipToe locator & position it
+string $name = "tipToe_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = $howManyJoints - 1;//select tiptoe
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//tipToe locator and position it**************************************************************END*********tipToe locator & position it
+
+string $previousLocator = $createLocator[0];
+
+
+//heel locator and position it******************************************************************START*******heel locator & position it
+string $name = "heel_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 0;//select foot
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//heel locator and position it******************************************************************END*******heel locator & position it
+
+string $currentLocator = $createLocator[0];
+
+//offset position of heel*************************************************************************START*****offset position of heel
+string $getCurrentLocatorPos = `getAttr ($currentLocator + ".translateZ")`;//////////////////////////////////NEEDS TO BE GLOBALISED
+float $currentPos = $getCurrentLocatorPos;
+//print("$currentPos = " + $currentPos + ";  ");
+float $offset = 1.00;////////////////////////////////////////////////////////////////////////////////////////NEEDS TO BE GLOBALISED
+int $offsetCurrentLocator = $currentPos - $offset;
+//print("$offsetCurrentLocator = " + $offsetCurrentLocator + ";  ");
+string $setCurrentLocatorPos = `setAttr ($currentLocator + ".translateZ") $offsetCurrentLocator`;////////////NEEDS TO BE GLOBALISED
+//offset position of heel**************************************************************************END******offset position of heel
+
+string $parentLocator = `parent -a $currentLocator $previousLocator`;
+string $previousLocator = $createLocator[0];
+
+
+//ball locator & position it**********************************************************************START*****ball locator & position it
+string $name = "ball_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 0;////select foot/////////////////////////////////////////////////////////////////NEEDS TO BE GLOBALISED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//ball locator & position it**********************************************************************END*****ball locator & position it
+
+string $currentLocator = $createLocator[0];
+string $parentLocator = `parent -a $currentLocator $previousLocator`;
+string $previousLocator = $createLocator[0];
+

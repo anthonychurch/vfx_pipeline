@@ -1,0 +1,254 @@
+import maya.cmds
+import random
+import math
+
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	#pvGrp = pvCtrl + '_GRP'
+	pvGrp = maya.cmds.listRelatives( pvCtrl,parent=True )[0]
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+	return pvGrp
+
+def incrementPos(increment,value,axis):
+	vector = (0,0,0)
+	value = value + increment
+	if(axis == 'x'):
+		vector = (value,0,0)
+	elif(axis == 'y'):
+		vector = (0,value,0)
+	else:
+		vector = (0,0,value)
+	return vector
+
+def lockHideAttr(obj,attrArray,lock,hide):
+	for a in attrArray:
+		maya.cmds.setAttr(obj + '.' + a, k=hide,l=lock)
+
+def setJointOriention(obj):
+	rx = maya.cmds.getAttr(str(obj) + '.rotateX')
+	print('rx = ' + str(rx))
+	maya.cmds.setAttr(str(obj) + '.jointOrientX', rx)
+	ry = maya.cmds.getAttr(str(obj) + '.rotateY')
+	print('ry = ' + str(ry))
+	maya.cmds.setAttr(str(obj) + '.jointOrientY', ry)
+	rz = maya.cmds.getAttr(str(obj) + '.rotateZ')
+	print('rz = ' + str(rz))
+	maya.cmds.setAttr(str(obj) + '.jointOrientZ', rz)
+	maya.cmds.setAttr(str(obj) + '.rotateX', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateY', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateZ', 0)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def getDistance2Vectors(pointA,pointB):
+	sp = getWStransform(pointA)
+	ep = getWStransform(pointB)
+	distance = math.sqrt(  math.pow(sp[0]-ep[0],2) + math.pow(sp[1]-ep[1],2) + math.pow(sp[2]-ep[2],2)  )
+	return distance
+
+def renamePrefixSuffix(array,prefix,suffix):
+	returnArray = []
+	for item in array:
+		temp = maya.cmds.rename(item,prefix + item + suffix)
+		returnArray.append(temp)
+
+	return returnArray
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+
+def insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints):
+	print('insertExtraJoints00 :: selectedJoints = ' + str(selectedJoints))
+	maya.cmds.select( clear=True )
+	oldMasterJoints = []
+	howManySelJoints = len(selectedJoints)
+	alljoints = []
+	jointsInserted = []
+	print('insertExtraJoints00 :: howManySelJoints = ' + str(howManySelJoints))
+	for i in range(0,howManySelJoints-1,1):
+		print('insertExtraJoints00 :: i = ' + str(i))
+		masterJoint = selectedJoints[i]
+		alljoints.append(masterJoint)
+		print('insertExtraJoints00 :: masterJoint = ' + str(masterJoint))
+		print('insertExtraJoints00 :: selectedJoints[i] = ' + str(selectedJoints[i]))
+		t = maya.cmds.rename(selectedJoints[i],'temp_' + masterJoint)
+		oldMasterJoints.append(t)
+		print('insertExtraJoints00 :: oldMasterJoints = ' + str(oldMasterJoints))
+		getOldMasterJointPos = getWStransform(oldMasterJoints[i])
+		masterJointName = findName(masterJoint,sidePrefix)
+		translateAxis = '.t' + jointAimAxis
+		jointDistance = getDistance2Vectors(oldMasterJoints[i],selectedJoints[i+1])
+		jointTweendistance = jointDistance / (howManyTweenJoints + 1)
+		getMasterJointPos = getWStransform(oldMasterJoints[i])
+		previousJoint = maya.cmds.joint( n=masterJoint)
+
+		for j in range(1,howManyTweenJoints+1,1):
+			v = incrementPos(jointTweendistance,(j-1)*jointTweendistance,jointAimAxis)
+			previousJoint = maya.cmds.joint( previousJoint,n=sidePrefix + jointTypePrefix[i] + str(j), p=v )
+			alljoints.append(previousJoint)
+			jointsInserted.append(previousJoint)
+
+		setWStransform(masterJoint,getOldMasterJointPos)
+
+		if(jointAimAxis == 'x'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(1,0,0), skip=["x"] )
+			maya.cmds.delete(aim)
+		elif(jointAimAxis == 'y'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,1,0), skip=["y"] )
+			maya.cmds.delete(aim)
+		else:
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,0,1), skip=["z"] )
+			maya.cmds.delete(aim)
+	
+		setJointOriention(masterJoint)
+		parent = maya.cmds.listRelatives( oldMasterJoints[i], parent=True )
+		print('insertExtraJoints00 :: parent = ' + str(parent))
+		if(parent != None):
+			maya.cmds.parent(masterJoint,parent[0])
+		
+		maya.cmds.parent(selectedJoints[i+1],previousJoint)
+		maya.cmds.delete(oldMasterJoints[i])
+		maya.cmds.select( clear=True )
+
+	alljoints.append(selectedJoints[howManySelJoints-1])
+	print('insertExtraJoints00 :: alljoints = ' + str(alljoints))
+	print('insertExtraJoints00 :: jointsInserted = ' + str(jointsInserted))
+	return(jointsInserted,alljoints)
+
+def insertExtraJoints06(jointArray,howManyJointsInserted,sidePrefix,prefix,suffix,jointAimAxis):
+	jointsInserted = []
+	allJoints = []
+	print('insertExtraJoints06 :: howManyJointsInserted = ' + str(howManyJointsInserted))
+	print('insertExtraJoints06 :: jointArray = ' + str(jointArray))
+	
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		
+		increment = 1
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('insertExtraJoints06 :: nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i]
+		print('insertExtraJoints06 :: currentJoint = ' + str(currentJoint))
+		previousJoint = jointArray[i]
+		print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+		translate = maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted+1))
+		print('insertExtraJoints06 :: jointSpacing = ' + str(jointSpacing))
+		allJoints.append(currentJoint)
+		#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+		for j in range(0,howManyJointsInserted,1):
+			print('insertExtraJoints06 :: j = ' + str(j))
+			insertJoint = maya.cmds.insertJoint(previousJoint)
+			createJoint = maya.cmds.rename(insertJoint,prefix + jointArray[i] + '_' + str(increment)  + suffix)
+			jointsInserted.append(createJoint)
+			#print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+			allJoints.append(createJoint)
+			#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			previousJoint = createJoint
+			print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+			increment = increment + 1
+
+		maya.cmds.setAttr (nextJoint + '.t' + jointAimAxis,jointSpacing)
+		print ('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+		increment = 1
+
+	allJoints.append(nextJoint)
+	print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+	print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+	return (jointsInserted,allJoints)
+
+
+sidePrefix = 'L_'
+jointType = 'IK_'
+limbTypeName = 'wing_'
+prefix = sidePrefix + jointType
+
+
+
+jointArray = maya.cmds.ls(selection=True)
+howManyJointsInserted = 2
+jointAimAxis = 'X'
+
+insertExtraJoints06(jointArray,howManyJointsInserted,sidePrefix,'','',jointAimAxis.lower())

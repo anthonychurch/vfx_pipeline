@@ -1,0 +1,238 @@
+import maya.cmds
+import random
+import math
+
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+
+def editTxtGrpButton(name,type):
+	item = maya.cmds.ls(selection=True)
+	if(len(item) == 1):
+		if(type == 'textFieldButtonGrp'):
+			maya.cmds.textFieldButtonGrp( name, e=True, text=str(item[0]))
+	else:
+		print('ERROR :: Select one item only, current items selected : ' + str(item))
+
+def togglesystems():
+	print('togglesystems()')
+	ikState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', q=True, value=True)
+	print('ikState = ' + str(ikState))
+	fkState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', q=True, value=True)
+	print('fkState = ' + str(fkState))
+	splineState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', q=True, value=True)
+	print('splineState = ' + str(splineState))
+
+	if(fkState == False):
+		maya.cmds.columnLayout('FK',  e=True, en=False)
+		if(splineState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=True)
+		maya.cmds.columnLayout('FK',  e=True, en=True)
+	if(splineState == False):
+		maya.cmds.columnLayout('SplineIK',  e=True, en=False)
+		if(ikState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=True)
+		maya.cmds.columnLayout('SplineIK',  e=True, en=True)
+	if(ikState == False):
+		maya.cmds.columnLayout('IK',  e=True, en=False)
+		if(fkState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=True)
+		maya.cmds.columnLayout('IK',  e=True, en=True)
+
+
+
+#Main function that is executed when the rebuild button is clicked from def rebuildCurveWindow(windowName,obj):
+#It queries all the GUI inputs then assigns them to the appropriate argument in def rebuildCurve(obj,amplitudeX,amplitudeY,amplitudeZ,weightX,weightY,weightZ,overlapX,overlapY,overlapZ,count,frequency,spans,degrees,tolerance,affectStartCV,affectEndCV):
+def buildIKFKSystem():
+	insertExtraJints = maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', q=True, value1=True )
+	#activeIK = 
+	#activeFK = 
+	#activeSplineIK = 
+	if(insertExtraJints == False):
+			maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', e=True, numberOfCheckBoxes=1, value1=False)
+			maya.cmds.floatFieldGrp( rebuildCurveWindowName + '_insertExtraJoints', e=True, value1=0, en=False, vis=True )
+	else:
+	
+			maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', e=True, value1=True )
+			maya.cmds.floatFieldGrp( rebuildCurveWindowName + '_insertExtraJoints', e = True, value1=3, en=True, vis=True )
+
+
+
+
+def buildIkFkWindow(windowName):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= 'Build IK FK SplineIK', s=True, iconName='Short Name', widthHeight=(450, 450))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.checkBox(windowName + '_chckIK', label='IK', value=True, cc='togglesystems()')
+	maya.cmds.checkBox(windowName + '_chckFK', label='FK', value=True, cc='togglesystems()')
+	maya.cmds.checkBox(windowName + '_chckSPL', label='Spline IK', value=True, cc='togglesystems()')
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	form = maya.cmds.formLayout(windowName + '_form1')
+	tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	maya.cmds.columnLayout('Global')
+	maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.textFieldGrp( windowName + '_sidePrefix', label='Side Prefix:', text='L_' )
+	sp = maya.cmds.textFieldGrp( windowName + '_sidePrefix', q=True, text=True )
+	maya.cmds.textFieldGrp( windowName + '_limbTypeName', label='Limb Type Name:', text='leg_' )
+	ltn = maya.cmds.textFieldGrp( windowName + '_limbTypeName', q = True, text=True )
+	maya.cmds.radioButtonGrp( windowName + '_limbType', label='Type Of Limb:', labelArray3=['bipedLeg', 'Quadraped', 'misc'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_ctrlAimAxis', label='Control Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_upAxis', label='Joint Up Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	maya.cmds.radioButtonGrp( windowName + '_jointAimAxis', label='Joint Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_jointOrientAxis', label='Joint Orient Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	getstartJoint = sp + 'hip'
+	getMidJoint = sp + 'knee'
+	getEndJoint = sp + 'ankle'
+	getToeJoint = sp + 'toe'
+	msg = windowName + '_startJoint'
+	run = 'runScript("' + windowName + '_startJoint' + '")'
+	maya.cmds.textFieldButtonGrp( windowName + '_startJoint', label='Get Start Joint:', text=getstartJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_startJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_midJoint', label='Get Mid Joint:', text=getMidJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_midJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_endJoint', label='Get End Control:', text=getEndJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_endJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_toeJoint', label='Get Toe Joint:', text=getToeJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_toeJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout('IK')
+	maya.cmds.scrollLayout( windowName + '_scrollIK', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_ik1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_IK', label='Joint Type:', text='IK_', en=True) 
+	ik = maya.cmds.textFieldGrp( windowName + '_IK', q=True, text=True ) 
+	getIkMainCtrl = sp + ik + 'foot_CTRL'
+	getIkStartCtrl = sp + ik + 'hip_CTRL'
+	getIkMidnCtrl = sp + ik + 'knee_CTRL'
+	getIkEndCtrl = sp + ik + 'toe_CTRL'
+	getIkpvCtrl = sp + ik + ltn + 'poleVector_tracking_LOC'
+
+	maya.cmds.textFieldButtonGrp( windowName + '_IKmainCtrl', label='Get IK Main Control:', text=getIkMainCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKmainCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKstartCTRL', label='Get IK Start Control:', text=getIkStartCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKstartCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKmidCTRL', label='Get IK Mid Control:', text=getIkMidnCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKmidCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKendCtrl', label='Get IK End Control:', text=getIkEndCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKendCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_ik1b', rs=5)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout('FK')
+	maya.cmds.scrollLayout( windowName + '_scrollFK', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_fk1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_FK', label='Joint Type:', text='FK_', en=True) 
+	fk = maya.cmds.textFieldGrp( windowName + '_FK', q=True, text=True ) 
+	getFkMainCtrl = sp + fk + 'foot_CTRL'
+	getFkStartCtrl = sp + fk + 'hip_CTRL'
+	getFkMidnCtrl = sp + fk + 'knee_CTRL'
+	getFkEndCtrl = sp + fk + 'toe_CTRL'
+	getFkpvCtrl = sp + fk + ltn + 'poleVector_tracking_LOC'
+	maya.cmds.textFieldButtonGrp( windowName + '_FKmainCtrl', label='Get FK Main Control:', text=getFkMainCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKmainCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKstartCTRL', label='Get FK Start Control:', text=getFkStartCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKstartCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKmidCTRL', label='Get FK Mid Control:', text=getFkMidnCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKmidCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKendCtrl', label='Get FK End Control:', text=getFkEndCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKendCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKpvCtrl', label='Get FK Pole Vector Control:', text=getFkpvCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKpvCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_fk1b', rs=6)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+
+	maya.cmds.columnLayout('SplineIK')
+	maya.cmds.scrollLayout( windowName + '_scrollSPLINE', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_column1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_SPL', label='Joint Type:', text='SPL_', en=True) 
+	spl = maya.cmds.textFieldGrp( windowName + '_SPL', q=True, text=True )
+	maya.cmds.checkBoxGrp( windowName + '_createSplineIK', numberOfCheckBoxes=1, label='Use Curve to Create IK:', value1=True, cc='buildIKFKSystem()' )
+	maya.cmds.textFieldButtonGrp( windowName + '_splineIkmasterCtrl', label='Get Master Control:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_splineIkmasterCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.intFieldGrp( windowName + '_howwManySplineControlJoints', numberOfFields=1, label='Number of Control Joints:', value1=0, en=False )
+	maya.cmds.intFieldGrp( windowName + '_howwManySplineTweenJoints', numberOfFields=1, label='Number of tween Joints:', value1=3, en=True )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_column1b')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+
+	maya.cmds.showWindow( windowName )
+
+
+
+rebuildCurveWindowName = 'buildIKFKsystem'
+deleteWindow(rebuildCurveWindowName)
+buildIkFkWindow(rebuildCurveWindowName)

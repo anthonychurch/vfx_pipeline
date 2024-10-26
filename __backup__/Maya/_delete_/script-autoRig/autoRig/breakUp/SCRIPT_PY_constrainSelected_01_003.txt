@@ -1,0 +1,340 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setConstraint(contraintType, source, destination, offset, name):
+	constraint = None
+	type = 'point'
+	if(contraintType == 'parent'):
+		type = 'parent'
+		if(name != None):
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset)
+	elif(contraintType == 'point'):
+		if(name != None):
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset)
+	elif(contraintType == 'orient'):
+		if(name != None):
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset)
+	else:
+		if(name != None):
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset)
+
+	return (constraint[0],type)
+
+def addBaseNode(array,suffix):
+	returnArray = []
+	for i in array:
+		loc = maya.cmds.duplicate(i,n=i + '_' + suffix)[0]
+		print('addBaseNode :: loc = ' + str(loc))
+		returnArray.append(loc)
+		rel = maya.cmds.listRelatives(loc,c=True,f=True)
+		print('addBaseNode :: rel = ' + str(rel))
+		for r in rel:
+			if maya.cmds.objExists(r):
+				maya.cmds.delete(r)
+		maya.cmds.parent(i,loc,a=True)
+
+	return returnArray
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+		print('checkAttrExist :: newAttr = ' + str(newAttr))
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+def getTweenJoints(jointArray,howManyTweenJoints):
+	increment = 0
+	newArray = []
+	#print('getTweenJoints :: increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('getTweenJoints :: j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('getTweenJoints :: increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('getTweenJoints :: newArray = ' + str(newArray) )
+
+	return newArray
+
+def constrainSelection(driverArray,selectArray,constraintType,offset):
+	returnArray = []
+	
+	for i in range(0,len(selectArray),1):
+		if((testNodeType(driverArray[i],'transform') != True) and (testNodeType(driverArray[i],'joint') != True)):
+			print ('constrainSelection :: driverArray[i]  = ' + str(driverArray[i]) )
+			driverArray[i] = maya.cmds.listRelatives( driverArray[i], parent=True )[0]
+			print ('constrainSelection :: driverArray[i]  = ' + str(driverArray[i]) )
+
+		if((testNodeType(selectArray[i],'transform') != True) and (testNodeType(selectArray[i],'joint') != True)):
+			print ('constrainSelection :: selectArray[i]  = ' + str(selectArray[i]) )
+			selectArray[i] = maya.cmds.listRelatives( selectArray[i], parent=True )[0]
+			print ('constrainSelection :: selectArray[i]  = ' + str(selectArray[i]) )
+
+
+		temp = setConstraint(constraintType, driverArray[i], selectArray[i], offset, None)
+		print ('constrainSelection :: temp = ' + str(temp) )
+
+	return returnArray
+
+def filterSelection2(array,breakerObj,increment):
+	print ('filterSelection2 :: array =  ' + str(array) )
+	newArray = []
+	brake = False
+	print ('filterSelection2 :: breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('filterSelection2 :: array[n] =  ' + str(array[n]) )
+				brake = True
+	print ('filterSelection2 :: newArray = ' + str(newArray) )
+	return newArray
+
+#def setUpWingFlex(ctrlArray,locatorArray,pitchAxis,rotateAxis,rollAxis):
+def setUpWingFlex(ctrlArray,locatorArray,flexAxis):
+	returnArray = []
+	keepVectors = []
+	flexAttr = 'flex'
+	checkAttrExist(ctrlArray[0],flexAttr,'double',-50,50,0,True,True)
+	
+	previousCtrl = ctrlArray[0]
+	previousLocator = locatorArray[0]
+
+	for j in locatorArray:
+		vector = getWSrotate(j)
+		print ('setUpWingFlex :: vector = ' + str(vector) )
+		keepVectors.append(vector)
+	
+	for j in range(0,len(ctrlArray),1):
+		destination = locatorArray[j] + '.rx'# + rotateAxis.lower()
+		source = ctrlArray[j] + '.rx'# + rotateAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		destination = locatorArray[j] + '.ry'# + pitchAxis.lower()
+		source = ctrlArray[j] + '.ry'# + pitchAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		destination = locatorArray[j] + '.rz'# + rollAxis.lower()
+		source = ctrlArray[j] + '.rz'# + rollAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+		
+		constainLocator = maya.cmds.pointConstraint(locatorArray[j], ctrlArray[j], weight=1 )
+
+
+	source = ctrlArray[0] + '.' + flexAttr
+	for j in range(1,len(ctrlArray),1):
+		maya.cmds.select(previousLocator, hi=True)
+		allLoc = maya.cmds.ls(selection=True,tr=True)
+		tweenLoc = filterSelection2(allLoc,locatorArray[j],1)
+		
+		for i in range(1,len(tweenLoc)-1,1):
+			destination = tweenLoc[i] + '.r' + flexAxis.lower()
+			maya.cmds.connectAttr(source, destination, force=True)
+		
+		previousLocator = locatorArray[j]
+
+	grpNodes = addBaseNode(locatorArray)
+	
+	for j in range(0,len(grpNodes),1):
+		print ('setUpWingFlex :: keepVectors[j] = ' + str(keepVectors[j]) )
+		setWSrotate(grpNodes[j],keepVectors[j])
+			
+	return returnArray
+
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+mainLocators = maya.cmds.ls(selection=True)
+#ctrls = createLocatorsOnJointChain(sel)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+def whichConstaintType(value):
+	axis = 'parent'
+	if(value == 2):
+		axis = 'point'
+	elif(value == 3):
+		axis = 'aim'
+	return axis
+
+
+def buildWindow(windowName,windowTitle, line1, line2, line3):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 300))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	#form = maya.cmds.formLayout(windowName + '_form1')
+	#tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	#maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	#maya.cmds.columnLayout('')
+	#maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldButtonGrp( windowName + '_selection', label='Get Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_selection' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line2 )
+	maya.cmds.textFieldButtonGrp( windowName + '_drivers', label='Get Driver Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_drivers' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line3 )
+	maya.cmds.radioButtonGrp( windowName + '_constraintType', label='Constraint Type:', labelArray3=['parent', 'point', 'aim'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.text( label= '' )
+	maya.cmds.checkBoxGrp(windowName + '_offset', numberOfCheckBoxes=1, label='Offset', value1=True)
+	#maya.cmds.text( label= line3 )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+def runWindow(windowName):
+	getSel = maya.cmds.textFieldButtonGrp( windowName + '_selection', q=True, text=True )
+	selection = getSel.split()
+
+	getDrivers = maya.cmds.textFieldButtonGrp( windowName + '_drivers', q=True, text=True )
+	drivers = getDrivers.split()
+
+	getType = maya.cmds.radioButtonGrp( windowName + '_constraintType', q=True, sl=True )
+	type = whichConstaintType(getType)
+
+	offset = maya.cmds.checkBoxGrp( windowName + '_offset', q=True, value1=True )
+
+	#sel = maya.cmds.radioButtonGrp( windowName + '_selection', q=True, sl=True )
+	#selection = whichAxis(fra)[1]
+	#jua = maya.cmds.radioButtonGrp( windowName + '_jointUpAxis', q=True, sl=True )
+	#pitchAxis = whichAxis(jua)[1]
+	#jra = maya.cmds.radioButtonGrp( windowName + '_jointRotAxis', q=True, sl=True )
+	#rotateAxis = whichAxis(jra)[1]
+
+	#print ('rollAxis = ' + str(rollAxis) )
+	#print ('rotateAxis = ' + str(rotateAxis) )
+	#print ('pitchAxis = ' + str(pitchAxis) )
+	
+	contraints = constrainSelection(drivers,selection,type,offset)
+
+
+line1 = '	SELECT OBJECTS TO BE CONSTRAINED:-'
+line2 = '	SELECT OBJECTS TO DRIVE CONSTRAINT:-'
+line3 = '	SELECT SELECT TYPE OF CONSTRAINT:-'
+
+windowTitle = 'Contrain Selected Objects'
+rebuildCurveWindowName = 'contrainSelectedObjects'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName,windowTitle, line1, line2, line3)
+

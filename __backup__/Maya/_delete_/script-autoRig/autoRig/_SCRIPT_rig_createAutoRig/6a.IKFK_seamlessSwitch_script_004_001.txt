@@ -1,0 +1,69 @@
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+string $IKprefix = $sidePrefix + "IK_";
+string $FKprefix = $sidePrefix + "FK_";
+
+
+string $handCTRL = $sidePrefix + "hand_CTRL";
+
+float $direction = 2;
+
+string $IKstartCTRL = $IKprefix + "shoulder_LOC";
+string $IKstartTracker = $IKprefix + "shoulder_tracking_LOC";
+string $IKmiddleTracker = $IKprefix + "elbow_tracking_LOC";
+string $IKendCTRL = $IKprefix + "wrist_CTRL";
+string $IKpoleVector = $IKprefix + "arm_poleVector_CTRL";
+string $IKFKswitch = $sidePrefix + "IKFK_arm_CTRL";
+
+string $masterCTRL = "MASTER_CTRL";
+
+string $clavicleCTRL = $sidePrefix + "clavicle_CTRL";
+
+string $FKstartCTRL = $FKprefix + "shoulder_CTRL";
+string $FKmiddleCTRL = $FKprefix + "elbow_CTRL";
+string $FKendTracker = $FKprefix + "wrist_tracking_LOC";
+string $FKpoleVectorTracker = $FKprefix + "arm_poleVector_tracking_LOC";
+
+string $IKstartJoint = $IKprefix + "shoulder";
+string $IKmiddleJoint = $IKprefix + "elbow";
+string $IKendJoint = $IKprefix + "wrist";
+
+string $FKstartJoint = $FKprefix + "shoulder";
+string $FKmiddleJoint = $FKprefix + "elbow";
+string $FKendJoint = $FKprefix + "wrist";
+
+string $FKarmScale[] = `listConnections -s on ($FKmiddleJoint + ".tx")`;//$FKprefix + "arm_scale_multiplyDivide1";
+
+string $IKarmScale[] = `listConnections -s on ($IKmiddleJoint + ".tx")`;//$FKprefix + "arm_limit_multiplyDivide1"
+
+
+
+
+
+
+addAttr -ln IKFK -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_stretch -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_stretch -at message L_IKFK_arm_CTRL;
+
+//connectAttr -f ($IKFKswitch + ".message") L_IKFK_arm_CTRL.IkFk;
+connectAttr -f ($FKstartCTRL + ".message") L_IKFK_arm_CTRL.FK_shoulder;
+connectAttr -f ($FKmiddleCTRL + ".message") L_IKFK_arm_CTRL.FK_elbow;
+connectAttr -f ($FKendTracker + ".message") L_IKFK_arm_CTRL.FK_wrist;
+connectAttr -f ($FKpoleVectorTracker + ".message") L_IKFK_arm_CTRL.FK_arm_poleVector;
+connectAttr -f ($IKstartTracker + ".message") L_IKFK_arm_CTRL.IK_shoulder;
+connectAttr -f ($IKmiddleTracker + ".message") L_IKFK_arm_CTRL.IK_elbow;
+connectAttr -f ($IKendCTRL + ".message") L_IKFK_arm_CTRL.IK_wrist;
+connectAttr -f ($IKpoleVector + ".message") L_IKFK_arm_CTRL.IK_arm_poleVector;
+connectAttr -f ($FKarmScale[0] + ".message") L_IKFK_arm_CTRL.FK_stretch;
+connectAttr -f ($IKarmScale[0] + ".message") L_IKFK_arm_CTRL.IK_stretch;
+
+
+//FK 2 IK

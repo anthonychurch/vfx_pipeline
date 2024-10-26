@@ -1,0 +1,56 @@
+import maya.cmds
+import random
+import math
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+		print('checkAttrExist :: newAttr = ' + str(newAttr))
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+
+attr = 'crvPos'
+min = 0
+max = 1
+default = 0.5
+type='double' #float
+keyable = True
+replace = True
+
+destAttr = 'parameter'
+srcAttr = attr
+
+for destNode in sel:
+
+	if(destNode  != last):
+		destination =  destNode + '.' + destAttr
+		source =  last + '.' + srcAttr
+		maya.cmds.connectAttr(source, destination, force=True)
+

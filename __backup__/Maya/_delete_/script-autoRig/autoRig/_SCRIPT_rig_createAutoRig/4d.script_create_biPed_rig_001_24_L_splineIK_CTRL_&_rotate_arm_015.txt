@@ -1,0 +1,306 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET
+//print("__________________________SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET__________________________");
+//INSTRUCTIONS:
+//1. Ensure that the SPL CURVE is cluster with each cluster name base on the name of the SPL joint suffix with "_CLUSTER" that it correlates with
+//2. select the joints of the SPL arm joints starting from the start to the end then select the MASTER CTRL curve to be duplicated
+// 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel)-1;//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyControls;
+
+
+int $i;
+int $j;
+int $whichJoint; 
+int $count = 0;
+int $break = 0;
+
+int $howManyControlJointzInserted = 1;
+int $howManyJointsInserted = 6;//for spline IK
+int $divide = $howManyJointsInserted + 1;
+int $index = 0;
+
+float $howManyControlJointz = (ceil($howManyJoints/$divide));
+float $fraction = 1 /$howManyControlJointz-1;//$howManyControlJointz = all the control joints from shoulder to wrist
+
+float $howManyNodes = ceil($howManyControlJointz / 3);
+float $increment = 0;
+string $rotationAxis = ".rotateX";
+
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+string $IKJointPrefix = $sidePrefix + "IK_";
+string $FKJointPrefix = $sidePrefix + "FK_";
+string $splineJointPrefix = $sidePrefix + "SPL_";
+string $IKFK_CTRL = $sidePrefix + "IKFK_arm_CTRL";
+
+//ensure that the controllers are created
+string $IKwristCtrl = $sidePrefix + "IK_wrist_CTRL";
+string $FKwristCtrl = $sidePrefix + "FK_elbow_CTRL";
+
+string $IKpolevectorCTRL = $IKJointPrefix + "arm_poleVector_CTRL";
+string $FKshoulderCTRL = $FKJointPrefix + "shoulder_CTRL";
+
+string $FKwristLOC = $FKJointPrefix + "wrist_tracking_LOC";
+
+string $IKCTRL[] = {$IKpolevectorCTRL, $IKwristCtrl};
+string $FKCTRL[] = {$FKshoulderCTRL, $FKwristCtrl};
+
+//****************************************************************************************************************************************
+string $handCTRL = $sidePrefix + "hand_CTRL";//NOTE: THIS NEEDS TO BE ALTERED FOR THE LEG SET UPS*****************************************
+//****************************************************************************************************************************************
+
+string $IKrotateMultiply = $sidePrefix + "IK_arm_rotator_multiplyDivide";
+string $FKrotateMultiply = $sidePrefix + "FK_arm_rotator_multiplyDivide";
+string $IKFKrotateBlend =  $sidePrefix + "IKFK_arm_blend";
+
+string $cluster = "_CLUSTER";
+
+string $armTweak_AV;
+
+
+string $IKrotateArry[];
+string $FKrotateArry[];
+string $IKFKrotateArry[];
+string $grpArry[];
+string $control[];
+
+
+
+
+
+string $setRangeNode = `shadingNode -n ($sidePrefix + "IKFK_arm_setRange1") -asUtility setRange`;
+
+
+
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".IkFk";//change this variable
+
+string $socketAttribute2 = ".valueY";//change this variable
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $socket2 = $setRangeNode + $socketAttribute2;
+string $connector1 = $IKFK_CTRL + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+connectAttr -force  $connector1  $socket2;
+
+string $connectorAttribute3 = ".outValueX";//change this variable
+string $connectorAttribute4 = ".outValueY";//change this variable
+string $connectorAttribute7 = ".outValueZ";//change this variable
+
+string $visibilityAttribute = ".visibility";
+string $socketAttribute5 = ".valueZ";//change this variable
+string $connectorAttribute1 = ".spline";
+
+string $socket1 = $setRangeNode + $socketAttribute5;
+string $connector1 = $IKFK_CTRL + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+
+setAttr ($setRangeNode + ".oldMaxX") 10;
+setAttr ($setRangeNode + ".oldMaxY") 10;
+setAttr ($setRangeNode + ".oldMaxZ") 10;
+setAttr ($setRangeNode + ".maxX") 1;
+setAttr ($setRangeNode + ".minY") 1;
+setAttr ($setRangeNode + ".maxZ") 1;
+
+
+
+
+//create the controls
+for($i = 0; $i < $howManyControlJointz; $i++){
+	//select only the control joints
+	$index = $i * $divide;
+	//print ("$index = " + $index + ";   ");
+	
+	string $copy[] = `duplicate -n ($sel[$index] + "_CTRL") $last[0]`;
+	string $group1 = `group -n ($sel[$index] + "_AV") $copy[0]`;
+	string $group2 = `group -n ($sel[$index] + "_NULL") $group1`;
+	string $group3 = `group -n ($sel[$index] + "_GRP") $group2`;
+	$grpArry[$i] = $group3;
+	$control[$i] = $copy[0];
+	
+	
+	string $parentConstraint[] = `pointConstraint $sel[$index] $group3`;
+	delete $parentConstraint[0];
+		
+	
+	select -r $copy[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+	connectAttr -force  ($setRangeNode + ".outValueZ")  ($grpArry[$i] + $visibilityAttribute);
+}
+
+
+
+
+//create multiply and blend nodes 
+
+for ($i = 0; $i < $howManyNodes; $i++){
+
+	
+
+	string $multiplierNode = `shadingNode -n ($IKrotateMultiply + "1") -asUtility multiplyDivide`;
+	$IKrotateArry[$i] = $multiplierNode;
+	string $multiplierNode = `shadingNode -n ($FKrotateMultiply + "1") -asUtility multiplyDivide`;
+	$FKrotateArry[$i] = $multiplierNode;
+	string $multiplierNode = `shadingNode -n ($IKFKrotateBlend + "1") -asUtility blendColors`;
+	$IKFKrotateArry[$i] = $multiplierNode;
+
+
+	//Connect Multiple nodes to blend
+	int $offset = $i + 1;
+	
+	string $whichAxis[3] = {"X", "Y", "Z"};
+	string $whichColour[3] = {"R", "B", "G"};
+
+	
+	
+	for($j = 0; $j < 3; $j++){
+		
+		if($break == 0){
+			string $IKconnector = $IKrotateArry[$i] + ".output" + $whichAxis[$j];//$IKrotate + $offset + ".output" + $whichAxis[$j];
+			string $FKconnector = $FKrotateArry[$i] + ".output" + $whichAxis[$j];//$FKrotate + $offset + ".output" + $whichAxis[$j];
+			string $IKsocket = $IKFKrotateArry[$i] + ".color1" + $whichColour[$j];//$IKFKrotate + $offset + ".color1" + $whichColour[$j];//IK
+			string $FKsocket = $IKFKrotateArry[$i] + ".color2" + $whichColour[$j];//$IKFKrotate + $offset + ".color2" + $whichColour[$j];//FK
+		
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//connect IK wrist control to Multiply nodes
+			string $IKsocket = $IKrotateArry[$i] + ".input1" + $whichAxis[$j];//$IKrotate + $offset + ".input1" + $whichAxis[$j];
+			string $FKsocket = $FKrotateArry[$i] + ".input1" + $whichAxis[$j];//$FKrotate + $offset + ".input1" + $whichAxis[$j];
+
+			//****************************************************************************************************************************************
+			string $IKconnector = $handCTRL + $rotationAxis;//NOTE: THIS NEEDS TO BE ALTERED FOR THE LEG SET UPS and change to roate Y*******************
+			//****************************************************************************************************************************************
+			string $FKconnector = $FKwristCtrl + $rotationAxis;//NOTE: THIS NEEDS TO BE change to roate Y************************************************
+						
+			float $smoothStep = `smoothstep 0 1 $increment`;
+			
+			setAttr ($IKrotateArry[$i] + ".input2" + $whichAxis[$j]) $smoothStep;
+			setAttr ($FKrotateArry[$i] + ".input2" + $whichAxis[$j]) $smoothStep;
+
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//increment up the suffix to conect to "L_armTweak_AV"
+			string $connector = $IKFKrotateArry[$i] + ".output" + $whichColour[$j];//$IKFKrotate + $offset + ".output" + $whichColour[$j];
+			string $socket = ($sel[$count] + "_AV") + $rotationAxis;
+			//print($sel[$count] + "_AV;      ");
+		
+			connectAttr -force $connector $socket;
+
+			$increment = $increment + $fraction;
+			
+			$count = $count + $divide;
+			
+			if($count > $howManyJoints){
+				$break = 1;
+			}
+
+		}
+	}
+}
+
+
+$count = 0;
+
+//
+for($i = 0; $i < $howManyControlJointz; $i++){
+
+		//print("$count = " + $count + ";      ");
+		//print("$i = " + $i + ";      ");
+		//if($i < ceil($howManyJoints/$divide)-1){///////
+		string $IKJoint = substituteAllString($sel[$count], $splineJointPrefix, $IKJointPrefix);
+		string $FKJoint = substituteAllString($sel[$count], $splineJointPrefix, $FKJointPrefix);	
+		//}////////////
+		
+		string $deformJoint = substituteAllString($sel[$count], $splineJointPrefix, $sidePrefix);
+		
+	
+		if($howManyControlJointzInserted > 1){
+			
+			string $pointConstain[] = `pointConstraint -mo $control[$i] ($sel[$count] + $cluster)`;
+
+
+			string $pointConstain[] = `pointConstraint -mo $IKJoint $grpArry[$i]`;
+			connectAttr -force  ($setRangeNode + ".outValueX") ($pointConstain[0] + "." + $IKJoint + "W0");
+			//setAttr ($pointConstain[0] + ".interpType") 0;
+
+			string $pointConstain[] = `pointConstraint -mo $FKJoint $grpArry[$i]`;
+			connectAttr -force  ($setRangeNode + ".outValueY") ($pointConstain[0] + "." + $FKJoint + "W1");
+			//setAttr ($pointConstain[0] + ".interpType") 0;
+
+			if($i < ($howManyJoints/$divide) - 1){
+				string $parentConstain[] = `parentConstraint -mo $sel[$count] $deformJoint`;
+				setAttr ($parentConstain[0] + ".interpType") 0;
+			} else {
+				print("boo");
+				string $parentConstain[] = `parentConstraint -mo $IKwristCtrl $deformJoint`;
+				connectAttr -force  ($setRangeNode + ".outValueX") ($parentConstain[0] + "." + $IKwristCtrl + "W0");
+				setAttr ($parentConstain[0] + ".interpType") 0;
+
+				string $parentConstain[] = `parentConstraint -mo $FKwristCtrl $deformJoint`;
+				connectAttr -force  ($setRangeNode + ".outValueX") ($parentConstain[0] + "." + $FKwristCtrl + "W1");
+				setAttr ($parentConstain[0] + ".interpType") 0;
+			}
+
+		} else {
+			
+			string $parentConstain[] = `parentConstraint -mo $IKJoint $grpArry[$i]`;
+			connectAttr -force  ($setRangeNode + ".outValueX") ($parentConstain[0] + "." + $IKJoint + "W0");
+			setAttr ($parentConstain[0] + ".interpType") 0;
+
+			string $parentConstain[] = `parentConstraint -mo $FKJoint $grpArry[$i]`;
+			connectAttr -force  ($setRangeNode + ".outValueY") ($parentConstain[0] + "." + $FKJoint + "W1");
+			setAttr ($parentConstain[0] + ".interpType") 0;
+
+			string $parentConstain[] = `parentConstraint -mo $control[$i] $deformJoint`;
+		}
+
+		$count = $count + $divide;
+
+		
+	
+	
+}
+
+string $parentConstain[] = `pointConstraint -mo $IKwristCtrl $handCTRL`;
+connectAttr -force  ($setRangeNode + ".outValueX") ($parentConstain[0] + "." + $IKwristCtrl + "W0");
+
+string $parentConstain[] = `pointConstraint -mo $FKwristLOC $handCTRL`;
+connectAttr -force  ($setRangeNode + ".outValueY") ($parentConstain[0] + "." + $FKwristLOC + "W1");
+
+
+float $IKSize = size($IKCTRL);
+
+
+for($i = 0; $i < $IKSize; $i++){
+
+		string $connector3 = $setRangeNode + $connectorAttribute3;
+		string $socket5 = $IKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector3  $socket5;
+
+
+}
+
+
+
+
+float $FKSize = size($FKCTRL);
+
+for($i = 0; $i < $FKSize; $i++){
+		string $connector4 = $setRangeNode + $connectorAttribute4;
+		string $socket6 = $FKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector4  $socket6;
+
+
+}
+

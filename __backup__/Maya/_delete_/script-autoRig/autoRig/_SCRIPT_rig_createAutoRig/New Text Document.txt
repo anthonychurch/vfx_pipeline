@@ -1,0 +1,10 @@
+string $pt1[] = `xform -q -ws -ro joint1`;
+string $pt2[] = `xform -q -ws -ro joint2`;
+string $pt3[] = `xform -q -ws -ro joint3`;
+string $pt4[] = `xform -q -ws -ro joint4`;
+
+string $curveCommand = "curve";
+string $posFlag = " -p ";
+string $space = " ";
+
+string $createCurve = $curveCommand + $posFlag + 

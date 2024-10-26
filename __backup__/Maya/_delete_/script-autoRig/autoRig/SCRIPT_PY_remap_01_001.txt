@@ -1,0 +1,86 @@
+
+
+.outputX    to    .inputValue
+
+
+
+.outValue    to    .inputR
+
+
+
+.outputR    to    .colorIfFalse
+
+
+shadingNode -asUtility remapValue;
+
+setAttr remapValue3.value[2].value_FloatValue 1.0;
+setAttr remapValue3.value[2].value_Position 0.5;
+setAttr remapValue3.value[2].value_Interp 1;
+
+setAttr "remapValue1.value[1].value_Position" 1;
+setAttr "remapValue1.value[1].value_FloatValue" 0.0;
+
+setAttr "remapValue1.value[2].value_Position" 0.5;
+setAttr "remapValue1.value[2].value_FloatValue" 1.00;
+
+setAttr "remapValue1.value[0].value_Position" 0.0;
+setAttr "remapValue1.value[0].value_FloatValue" 0.0;
+
+setAttr "remapValue3.inputMin" -8;
+setAttr "remapValue3.inputMax" 10;
+
+
+
+shadingNode -asUtility clamp;
+
+setAttr "clamp2.minR" 0.955;
+setAttr "clamp2.maxR" 1;
+
+
+
+
+import maya.cmds
+import random
+import math
+
+IKStretchRemapNode = 'stretchDampenRemap_remapValue'
+IKStretchClampNode = 'stretchDampenClamp_clamp'
+
+	stretchRemapNode = maya.cmds.shadingNode('remapValue',n=IKStretchRemapNode + '1',au=True) 
+	socket =  stretchRemapNode + '.inputValue'
+	connector =  normaliseNode + '.outputX'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_Position',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_FloatValue',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[1].value_Position',1.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[1].value_FloatValue',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_FloatValue',1.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_Position',0.5)
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.inputMin',0)
+	maya.cmds.setAttr(stretchRemapNode + '.inputMax',2)
+
+	StretchClampNode = maya.cmds.shadingNode('clamp',n=IKStretchClampNode + '1',au=True) 
+
+	maya.cmds.setAttr(StretchClampNode + '.minR',0.955)
+	maya.cmds.setAttr(StretchClampNode + '.maxR',1)
+	socket =  StretchClampNode + '.outputR'
+	connector =  normaliseNode + '.colorIfFalse'  
+	
+	socket = StretchClampNode + '.inputR'
+	connector = stretchRemapNode + '.outValue'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#CONNECT NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO ".colorIfFalseR" OF CONDITION NODE
+	socket = stretchDampenerNode + '.colorIfFalseR'
+	connector = stretch + '.outputR'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)

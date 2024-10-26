@@ -1,0 +1,22 @@
+string $sel[] = `ls -sl`;
+//print $sel;
+string $shapes[] = `listRelatives -s`;
+//print $shapes;
+float $howmanyShapeNodes = `size($shapes)`;
+string $listConnections[] = `listConnections $shapes[0]`;
+float $howmanyConnectionNodes = `size($listConnections)`;
+//print $listConnections;
+int $i;
+
+for($i = 0; $i < $howmanyConnectionNodes-1; $i++){
+	
+	delete $listConnections[$i];
+}
+
+for($i = 0; $i < $howmanyShapeNodes-1; $i++){
+	
+	delete $shapes[$i];
+}
+
+
+

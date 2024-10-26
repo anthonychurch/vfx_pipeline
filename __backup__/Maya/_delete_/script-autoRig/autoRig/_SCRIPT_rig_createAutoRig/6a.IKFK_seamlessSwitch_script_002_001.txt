@@ -1,0 +1,24 @@
+addAttr -ln IKFK -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln L_FK_arm_stretch -at message L_IKFK_arm_CTRL;
+addAttr -ln L_IK_arm_stretch -at message L_IKFK_arm_CTRL;
+
+//connectAttr -f L_IKFK_arm_CTRL.message L_IKFK_arm_CTRL.IkFk;
+connectAttr -f L_FK_shoulder_CTRL.message L_IKFK_arm_CTRL.FK_shoulder;
+connectAttr -f L_FK_elbow_CTRL.message L_IKFK_arm_CTRL.FK_elbow;
+connectAttr -f L_FK_wrist_tracking_LOC.message L_IKFK_arm_CTRL.FK_wrist;
+connectAttr -f L_FK_arm_poleVector_tracking_LOC.message L_IKFK_arm_CTRL.FK_arm_poleVector;
+connectAttr -f L_IK_shoulder_tracking_LOC.message L_IKFK_arm_CTRL.IK_shoulder;
+connectAttr -f L_IK_elbow_tracking_LOC.message L_IKFK_arm_CTRL.IK_elbow;
+connectAttr -f L_IK_wrist_CTRL.message L_IKFK_arm_CTRL.IK_wrist;
+connectAttr -f L_IK_arm_poleVector_CTRL.message L_IKFK_arm_CTRL.IK_arm_poleVector;
+
+
+//FK 2 IK

@@ -1,0 +1,76 @@
+import maya.cmds
+import random
+import math
+
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+
+
+#Main function that is executed when the rebuild button is clicked from def rebuildCurveWindow(windowName,obj):
+#It queries all the GUI inputs then assigns them to the appropriate argument in def rebuildCurve(obj,amplitudeX,amplitudeY,amplitudeZ,weightX,weightY,weightZ,overlapX,overlapY,overlapZ,count,frequency,spans,degrees,tolerance,affectStartCV,affectEndCV):
+def buildIKFKSystem():
+	insertExtraJints = maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', q=True, value1=True )
+	
+	if(insertExtraJints == False):
+			maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', e=True, numberOfCheckBoxes=1, value1=False)
+			maya.cmds.floatFieldGrp( rebuildCurveWindowName + '_insertExtraJoints', e=True, value1=0, en=False, vis=True )
+	else:
+	
+			maya.cmds.checkBoxGrp( rebuildCurveWindowName + '_doInsertExtraJoints', e=True, value1=True )
+			maya.cmds.floatFieldGrp( rebuildCurveWindowName + '_insertExtraJoints', e = True, value1=3, en=True, vis=True )
+
+
+
+
+def buildIkFkWindow(windowName):
+	maya.cmds.window( windowName, title= 'Build IK FK SplineIK', s=True, iconName='Short Name', widthHeight=(450, 450))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.checkBox(windowName + '_chckIK', label='IK')
+	maya.cmds.checkBox(windowName + '_chckFK', label='FK')
+	maya.cmds.checkBox(windowName + '_chckSPL', label='Spline IK')
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	form = maya.cmds.formLayout(windowName + '_form1')
+	tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	maya.cmds.columnLayout('Global')
+	maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_column1a', rs=4)
+	maya.cmds.radioButtonGrp( windowName + '_limbType', label='Type Of Limb:', labelArray3=['bipedLeg', 'Quadraped', 'misc'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_ctrlAimAxis', label='Control Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_upAxis', label='Joint Up Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	maya.cmds.radioButtonGrp( windowName + '_jointAimAxis', label='Joint Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_jointOrientAxis', label='Joint Orient Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_column1b')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	#
+
+
+	maya.cmds.showWindow( windowName )
+
+
+
+rebuildCurveWindowName = 'buildIKFKsystem'
+deleteWindow(rebuildCurveWindowName)
+buildIkFkWindow(rebuildCurveWindowName)

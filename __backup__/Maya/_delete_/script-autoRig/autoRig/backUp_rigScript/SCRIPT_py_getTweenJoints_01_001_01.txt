@@ -1,0 +1,23 @@
+howManyTweenJoints = 3
+howManyKeyJoints = 3
+joints = ['L_IK_hip','L_IK_humerus1','L_IK_humerus2','L_IK_humerus3','L_IK_knee','L_IK_shin1','L_IK_shin2','L_IK_shin3','L_IK_ankle']
+
+def getTweenJoints(jointArray,numberTweenJoints):
+	increment = 0
+	newArray = []
+	print('increment = ' + str(increment) )
+	for j in range(0,len(jointArray),1):
+		print('j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('newArray = ' + str(newArray) )
+
+	return newArray
+
+getTweenJoints(joints,howManyTweenJoints)
+		
+		
+

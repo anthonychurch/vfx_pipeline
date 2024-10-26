@@ -1,0 +1,219 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+def connectSplineIkStretchAttr(prefix, mainCTRL,stretchIKAttr,multiplyNode,curveInfoNode):
+	checkAttrExist(mainCTRL,stretchIKAttr,'double',0,10,0,True,True)
+	setRangeNode = maya.cmds.shadingNode('setRange',n=prefix + stretchIKAttr + '_setRange',au=True)
+	destination = setRangeNode + '.valueX'
+	source = mainCTRL + '.' + stretchIKAttr
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	checkAttrExist(mainCTRL,stretchIKAttr + '_crvinfo','double',-1000,1000,0,False,True)
+	al = maya.cmds.getAttr(curveInfoNode + '.arcLength')
+	maya.cmds.setAttr(mainCTRL + '.' + stretchIKAttr + '_crvinfo', al )
+
+	destination = setRangeNode + '.valueY'
+	source = mainCTRL + '.' + stretchIKAttr
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	maya.cmds.setAttr(setRangeNode + '.oldMaxX', 10)
+	maya.cmds.setAttr(setRangeNode + '.maxX', 1)
+	maya.cmds.setAttr(setRangeNode + '.oldMinX', 0)
+	maya.cmds.setAttr(setRangeNode + '.minX', 0)
+
+	StretchBlendNode = maya.cmds.shadingNode('blendColors',n=prefix + stretchIKAttr + '_blend',au=True)
+	destination =  StretchBlendNode + '.color1R'
+	source =  mainCTRL + '.' + stretchIKAttr + '_crvinfo'
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	destination =  StretchBlendNode + '.color2R'
+	source =  curveInfoNode + '.arcLength'
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	destination =  multiplyNode + '.input2X'
+	source =  StretchBlendNode + '.outputR'
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	destination =  StretchBlendNode + '.blender'
+	source =  setRangeNode + '.outValueX'
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	maya.cmds.setAttr(mainCTRL + '.' + stretchIKAttr + '_crvinfo', lock = True, keyable = False, channelBox = False)
+
+
+
+
+def setColour(array,colour):
+	for a in array:
+		if maya.cmds.objExists(a):
+			shape = getShapeNodes(a)
+			maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+			maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+def whichConstaintType(value):
+	axis = 'parent'
+	if(value == 2):
+		axis = 'point'
+	elif(value == 3):
+		axis = 'aim'
+	return axis
+
+
+def buildWindow(windowName, windowTitle, line1, line2):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 300))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	#form = maya.cmds.formLayout(windowName + '_form1')
+	#tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	#maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	#maya.cmds.columnLayout('')
+	#maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.text( label= line0 )
+	maya.cmds.textFieldGrp( windowName + '_prefix', label='Type Prefix:', text='M_IK_tail', )
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldGrp( windowName + '_attr', label='Type Attribute Name:', text='splineIkStretch', )
+	maya.cmds.text( label= line2 )
+	maya.cmds.textFieldButtonGrp( windowName + '_ctrl', label='Get ObjectGet Object:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_ctrl' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line3 )
+	maya.cmds.textFieldButtonGrp( windowName + '_curveInfo', label='Get Object:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_curveInfo' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line4 )
+	maya.cmds.textFieldButtonGrp( windowName + '_multNode', label='Get Object:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_multNode' + '","textFieldButtonGrp")' )
+	
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+def runWindow(windowName):
+
+	getCtrl = maya.cmds.textFieldButtonGrp( windowName + '_ctrl', q=True, text=True )
+	ctrlArray = getCtrl.split()
+	cntrl = ctrlArray[0]
+
+	getCurveInfo = maya.cmds.textFieldButtonGrp( windowName + '_curveInfo', q=True, text=True )
+	ci = getCurveInfo.split()
+	curveInfoNode = ci[0]
+
+	getMultNode = maya.cmds.textFieldButtonGrp( windowName + '_multNode', q=True, text=True )
+	mn = getMultNode.split()
+	multiplyNode = mn[0]
+
+	getPrefix = maya.cmds.textFieldGrp( windowName + '_prefix', q=True, text=True )
+	p = getPrefix.split()
+	prefix = p[0]
+
+	getAttr = maya.cmds.textFieldGrp( windowName + '_attr', q=True, text=True )
+	a = getAttr.split()
+	stretchIKAttr = a[0]
+
+	connectSplineIkStretchAttr(prefix, cntrl,stretchIKAttr,multiplyNode,curveInfoNode)
+
+
+
+
+line0 = '	TYPE PREFIX :-'
+line1 = '	TYPE ATTRIBUTE NAME :-'
+line2 = '	SELECT CONTROL :-'
+line3 = '	SELECT CURVE INFO NODE :-'
+line4 = '	SELECT MULTIPLY DIVIDE NODE :-'
+
+
+
+
+windowTitle = 'Set Up Spline IK Stretch Switch Attribute'
+rebuildCurveWindowName = 'setUpIsolateControl'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName, windowTitle, line1, line2)
+
+

@@ -1,0 +1,33 @@
+import maya.cmds
+import random
+import math
+
+def duplicatedSelectedOnJointChain(jointArray,obj):
+	returnArray = []
+	previousObj = jointArray[0] + '_CTRL'
+	
+	for j in range(0,len(jointArray),1):
+		name = jointArray[j] + '_CTRL'
+		currentObj = maya.cmds.duplicate(obj,n=name)[0]
+		print('duplicatedSelectedOnJointChain :: currentObj = ' + str(currentObj))
+		constainLocator = maya.cmds.parentConstraint(jointArray[j], currentObj, weight=1 )
+		maya.cmds.delete(constainLocator)
+		returnArray.append(currentObj)
+		if(j > 0):
+			maya.cmds.parent(currentObj,previousObj,a=True)
+		
+		previousObj = currentObj
+
+	return returnArray
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+obj = maya.cmds.ls(selection=True,tail=1)
+
+joints = []
+for j in range(0,len(sel)-1,1):
+	joints.append(sel[j])
+
+duplicatedSelectedOnJointChain(joints,obj)

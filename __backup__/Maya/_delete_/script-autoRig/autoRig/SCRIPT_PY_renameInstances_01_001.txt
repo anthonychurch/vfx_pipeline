@@ -1,0 +1,23 @@
+import maya.cmds
+
+def reverseArray(array):
+	print ('reverseArray :: array = ' + str(array))
+	retrunArray = []
+	for i in range(len(array)-1,-1,-1):
+		retrunArray.append(array[i])
+	print ('reverseArray :: retrunArray = ' + str(retrunArray))
+	return retrunArray
+
+
+prefix = 'pCube'
+suffix = '_geo'
+maya.cmds.select('*' + prefix + '*')
+sel = maya.cmds.ls(selection=True)
+print sel
+
+reverseSel = reverseArray(sel)
+
+for i in range(0,len(reverseSel)-1,1):
+    	if(i < 10):
+		increment = '0' + str(i+1)
+	maya.cmds.rename(reverseSel[i],prefix + increment + suffix)

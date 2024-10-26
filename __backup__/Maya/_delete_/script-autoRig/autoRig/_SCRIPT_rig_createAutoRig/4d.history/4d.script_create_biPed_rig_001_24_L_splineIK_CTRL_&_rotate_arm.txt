@@ -1,0 +1,120 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET
+//print("__________________________SET UP THE SPLINE IK CONTROLS WITH ROTATION OFFSET__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the spline IK chain starting from the start to the end then select the MASTER CTRL curve to be duplicated
+//2. 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyControls;
+float $howManyNodes = ceil($howManyJoints / 3);
+
+int $i;
+int $j;
+int $whichJoint; 
+int $count = 0;
+int $break = 0;;
+
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+
+//ensure that the controllers are created
+string $IKwristCtrl = $sidePrefix + "IK_wrist_CTRL";
+string $FKwristCtrl = $sidePrefix + "FK_wrist_CTRL";
+
+string $IKrotateMultiply = $sidePrefix + "IK_arm_rotator_multiplyDivide";
+string $FKrotateMultiply = $sidePrefix + "FK_arm_rotator_multiplyDivide";
+string $IKFKrotateBlend =  $sidePrefix + "IKFK_arm_blend";
+string $armTweak_AV;
+
+
+
+
+
+//create the controls
+for($i = 0; $i < $howManyJoints; $i++){
+	
+	string $copy[] = `duplicate -n ($prefix + $sel[$i] + "_CTRL") $last[0]`;
+	string $group1 = `group -n ($prefix + $sel[$i] + "_AV") $copy[0]`;
+	string $group2 = `group -n ($prefix + $sel[$i] + "_GRP") $group1`;
+	$controls[$i] = $copy[0];
+
+	string $parentConstraint[] = `pointConstraint $sel[$i] $group2`;
+	delete $parentConstraint[0];
+	select -r $copy[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+	
+	
+	
+}
+
+
+
+
+//create multiply and blend nodes 
+
+for ($i = 0; $i < $howManyNodes; $i++){
+
+	
+
+	string $multiplierNode = `shadingNode -n ($IKrotateMultiply + "1") -asUtility multiplyDivide`;
+	string $multiplierNode = `shadingNode -n ($FKrotateMultiply + "1") -asUtility multiplyDivide`;
+	string $multiplierNode = `shadingNode -n ($IKFKrotateBlend + "1") -asUtility blendColors`;
+
+
+	//Connect Multiple nodes to blend
+	int $offset = $i + 1;
+	
+	string $whichAxis[3] = {"X", "Y", "Z"};
+	string $whichColour[3] = {"R", "B", "G"};
+	
+	for($j = 0; $j < $howManyNodes; $j++){
+		
+		if($break == 0){
+			string $IKconnector = $IKrotateMultiply + $offset + ".output" + $whichAxis[$j];
+			string $FKconnector = $FKrotateMultiply + $offset + ".output" + $whichAxis[$j];
+			string $IKsocket = $IKFKrotateBlend + $offset + ".color1" + $whichColour[$j];//IK
+			string $FKsocket = $IKFKrotateBlend + $offset + ".color2" + $whichColour[$j];//FK
+		
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+		
+
+			//connect IK wrist control to Multiply nodes
+			string $IKsocket = $IKrotateMultiply + $offset + ".input1" + $whichAxis[$j];
+			string $FKsocket = $FKrotateMultiply + $offset + ".input1" + $whichAxis[$j];
+
+			string $IKconnector = $IKwristCtrl + ".rotateX";
+			string $FKconnector = $FKwristCtrl + ".rotateX";
+
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//increment up the suffix to conect to "L_armTweak_AV"
+			string $connector = $IKFKrotateBlend + $offset + ".output" + $whichColour[$j];
+			string $socket = ($prefix + $sel[$count] + "_AV") + ".rotateX";
+		
+			connectAttr -force $connector $socket;
+
+			$count = $count + 1;
+
+			if($count > $howManyJoints){
+				$break = 1;
+				print $count;
+			}
+		}
+	}
+}
+
+
+
+
+
+
+

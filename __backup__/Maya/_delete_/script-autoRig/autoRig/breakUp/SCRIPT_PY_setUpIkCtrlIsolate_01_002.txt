@@ -1,0 +1,944 @@
+import maya.cmds
+import random
+import math
+
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	#pvGrp = pvCtrl + '_GRP'
+	pvGrp = maya.cmds.listRelatives( pvCtrl,parent=True )[0]
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+	return pvGrp
+
+def incrementPos(increment,value,axis):
+	vector = (0,0,0)
+	value = value + increment
+	if(axis == 'x'):
+		vector = (value,0,0)
+	elif(axis == 'y'):
+		vector = (0,value,0)
+	else:
+		vector = (0,0,value)
+	return vector
+
+def lockHideAttr(obj,attrArray,lock,hide):
+	for a in attrArray:
+		maya.cmds.setAttr(obj + '.' + a, k=hide,l=lock)
+
+def setJointOriention(obj):
+	rx = maya.cmds.getAttr(str(obj) + '.rotateX')
+	print('rx = ' + str(rx))
+	maya.cmds.setAttr(str(obj) + '.jointOrientX', rx)
+	ry = maya.cmds.getAttr(str(obj) + '.rotateY')
+	print('ry = ' + str(ry))
+	maya.cmds.setAttr(str(obj) + '.jointOrientY', ry)
+	rz = maya.cmds.getAttr(str(obj) + '.rotateZ')
+	print('rz = ' + str(rz))
+	maya.cmds.setAttr(str(obj) + '.jointOrientZ', rz)
+	maya.cmds.setAttr(str(obj) + '.rotateX', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateY', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateZ', 0)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def getDistance2Vectors(pointA,pointB):
+	sp = getWStransform(pointA)
+	ep = getWStransform(pointB)
+	distance = math.sqrt(  math.pow(sp[0]-ep[0],2) + math.pow(sp[1]-ep[1],2) + math.pow(sp[2]-ep[2],2)  )
+	return distance
+
+def renamePrefixSuffix(array,prefix,suffix):
+	returnArray = []
+	for item in array:
+		temp = maya.cmds.rename(item,prefix + item + suffix)
+		returnArray.append(temp)
+
+	return returnArray
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,groupArray):
+	newArray = []
+	#brake = False
+	print('createIKjoints :: jointArray = ' + str(jointArray))
+	endJoint = jointArray[len(jointArray)-1]
+	print('createIKjoints :: endJoint = ' + str(endJoint))
+	maya.cmds.select( clear=True )
+	duplicateJoint = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicateJoint, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicateJoint, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		print('createIKjoints :: newn = ' + str(newn))
+		print('createIKjoints :: duplicateJoint = ' + str(duplicateJoint))
+		j = maya.cmds.rename(duplicateJoint,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		print('createIKjoints :: child = ' + str(duplicateJoint))
+		if(child != None):
+			if(len(child) == 1):
+				duplicateJoint = child[0]
+			else:
+				print('createIKjoints :: child = ' + str(child))
+				print('createIKjoints :: ' + str(j) + ' has a branch of Multiple Joints')
+				for c in child:
+					print('createIKjoints :: c = ' + str(c))
+					gc = maya.cmds.listRelatives(c,c=True,ad=True,f=True)
+					print('createIKjoints :: gc = ' + str(gc))
+					if(gc != None):
+						for g in gc:
+							prefixToIgnore = g.rfind('|')
+							test = g[prefixToIgnore+1:len(g)]
+							print('createIKjoints :: test = ' + str(test))
+							print('createIKjoints :: endJoint = ' + str(endJoint))
+							if(test == endJoint):
+								print('createIKjoints :: c has the end joint = ' + str(c))
+								duplicateJoint = c
+								print('createIKjoints :: duplicateJoint = ' + str(duplicateJoint))
+					else:	
+						print('createIKjoints :: deleting ' + str(c))
+						maya.cmds.delete(c)
+						duplicateJoint = maya.cmds.listRelatives(j,c=True,ad=True,f=True)[0]
+
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],groupArray[len(groupArray)-1])
+	return newArray
+
+def copySelectedJoints(jointArray,sidePrefix,jointType,groupArray):
+	prefix = sidePrefix + jointType
+	newArray = []
+	print('createIKjoints :: jointArray = ' + str(jointArray))
+	maya.cmds.select( clear=True )
+	duplicateJoint = maya.cmds.duplicate(jointArray[0])[0]
+	n = findNamePrefix(jointArray[0],sidePrefix)
+	j = maya.cmds.rename(duplicateJoint,prefix + n)
+	newArray.append(j)
+
+	allChildren = maya.cmds.listRelatives(j,ad=True,f=True)
+	
+	#DELETE UNWANTED JOINTS
+	for c in allChildren:
+		prefixToIgnore = c.rfind('|')
+		n = c[prefixToIgnore+1:len(c)]
+		delete = True
+		for i in range(1,len(jointArray),1):
+			print('createIKjoints :: compare ' + str(n) + ' : ' + str(jointArray[i]))
+			if(n == jointArray[i]):
+				delete = False
+
+		if(delete == True):
+			maya.cmds.delete(c)
+		else:
+			maya.cmds.rename(c,prefix + n)
+
+	allChildren = maya.cmds.listRelatives(j,ad=True,f=True)
+	revAllChildren = reverseArray(allChildren)
+	print('createIKjoints :: revAllChildren = ' + str(revAllChildren))
+	for c in revAllChildren:
+		newArray.append(c)
+
+	print('createIKjoints :: newArray = ' + str(newArray))
+
+	maya.cmds.parent(newArray[0],groupArray[len(groupArray)-1])
+	return newArray
+
+							
+def createIKhandles(prefix,limbType,type,startJoint,endJoint,pvCtrl,curve,grp):
+	ikh = prefix + limbType + 'ikHandle'
+	if(type != 'ikSplineSolver'):
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+		print('h = ' + str(h))
+		if(type == 'ikRPsolver'):
+			maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	else:
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type, ccv = False, pcv = False, c = curve)[0]
+		print('h = ' + str(h))
+		print('createIKhandles :: grp = ' + str(grp) )
+		maya.cmds.parent(h[0],grp)
+				
+	return h
+
+def getTweenJoints(jointArray,howManyTweenJoints):
+	increment = 0
+	newArray = []
+	#print('getTweenJoints :: increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('getTweenJoints :: j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('getTweenJoints :: increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('getTweenJoints :: newArray = ' + str(newArray) )
+
+	return newArray
+
+def getTweenJointsAuto(selectedObj,type):
+	newArray = []
+	
+	for i in range(1,len(selectedObj),1):
+		list = maya.cmds.listRelatives(selectedObj[i-1],ad=True,typ=type)
+		reverseList = reverseArray(list)
+		selection = filterSelection2(reverseList,selectedObj[i],1)
+		for j in range(0,len(selection)-1,1):
+			newArray.append(selection[j])
+
+	print('getTweenJoints :: newArray = ' + str(newArray))
+
+	return newArray
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+def aimControlsToJoints(selectedJoint,obj,jointAimAxis):
+	maya.cmds.parent(obj,selectedJoint,a=True)
+	maya.cmds.setAttr(obj + '.rx', 0 )
+	maya.cmds.setAttr(obj + '.ry', 90 )
+	maya.cmds.setAttr(obj + '.rz', 0 )
+	maya.cmds.parent(obj,w=True,a=True)
+
+def combineArrays(array1,array2):
+	print('combineArrays :: array1 = ' + str(array1))
+	returnArray = []
+	for b in array1:
+		returnArray.append(b)
+	for a in array2:
+		returnArray.append(a)
+	print('combineArrays :: array1 = ' + str(array1))
+	print('combineArrays :: array2 = ' + str(array2))
+	return returnArray
+
+def findNameFromContextArray(array,txt):
+	value = None
+	for a in array:
+		test = a.endswith(txt)
+		if(test == True):
+			value = a
+	return value
+
+def findNameFromContext(name,txt):
+	value = None
+	test = name.endswith(txt)
+	if(test == True):
+		value = name
+	return value
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+def setConstraint(contraintType, source, destination, offset, name):
+	constraint = None
+	type = 'point'
+	if(contraintType == 'parent'):
+		type = 'parent'
+		if(name != None):
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset)
+	elif(contraintType == 'point'):
+		if(name != None):
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset)
+	elif(contraintType == 'orient'):
+		if(name != None):
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset)
+	else:
+		if(name != None):
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset)
+
+	return (constraint[0],type)
+
+def createArrowCtrl(name,colour,axis,scle):
+	maya.cmds.curve(p=[(0,0,-14),(0,0,-14),(-4,0,-10),(-4,0,-10),(-4,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-4),(-10,0,-4),(-10,0,-4),(-14,0,0),(-14,0,0),(-14,0,0),(-10,0,4),(-10,0,4),(-10,0,4),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(-4,0,10),(-4,0,10),(-4,0,10),(0,0,14),(0,0,14),(0,0,14),(4,0,10),(4,0,10),(4,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,4),(10,0,4),(10,0,4),(14,0,0),(14,0,0),(14,0,0),(10,0,-4),(10,0,-4),(10,0,-4),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10),(4,0,-10),(4,0,-10),(4,0,-10),(0,0,-14),(0,0,-14)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,13,13,14,14,14,15,15,15,16,16,16,17,17,17,18,18,18,19,19,19,20,20,20,21,21,21,22,22,22,23,23,23,24,24,24])
+	ctrl = maya.cmds.ls(selection=True)
+	print('ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	print('shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(name) + '.rotate' + str(axis), 90)
+	maya.cmds.setAttr(str(name) + '.scaleX', scle)
+	maya.cmds.setAttr(str(name) + '.scaleY', scle)
+	maya.cmds.setAttr(str(name) + '.scaleZ', scle)
+	maya.cmds.makeIdentity( str(name), apply=True, t=1, r=1, s=1 )
+	return name
+
+def createCrossCtrl(name,colour,axis,scle):
+	maya.cmds.curve(p=[(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12])
+	ctrl = maya.cmds.ls(selection=True)
+	print('ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	print('shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(name) + '.rotate' + str(axis), 90)
+	maya.cmds.setAttr(str(name) + '.scaleX', scle)
+	maya.cmds.setAttr(str(name) + '.scaleY', scle)
+	maya.cmds.setAttr(str(name) + '.scaleZ', scle)
+	maya.cmds.makeIdentity( str(name), apply=True, t=1, r=1, s=1 )
+	return name
+		
+def createCurve(objArray,name,grp):
+	howManyObjs = len(objArray)
+	print ('howManyObjs = ' + str(howManyObjs))
+	points =''
+	pos1 = (0,0,0)
+	for i in range(0,howManyObjs,1):
+		print ('i = ' + str(i))
+		if(i != 1):
+			pos = getWStransform(objArray[i])
+			p = '(' + str(pos[0]) + ',' + str(pos[1]) + ',' + str(pos[2]) + ')'
+			print('p = ' + str(p))
+			if(i != howManyObjs-1):
+				p = p + ', '
+		else:
+			pos1 = getWStransform(objArray[i])
+			print('pos1 = ' + str(pos1))
+		points = points + p
+		print('points = ' + str(points))
+
+	eval('maya.cmds.curve(p=[' + points + '])')
+	curve = maya.cmds.ls(selection=True)
+	print ('curve = ' + str(curve))
+	rename = maya.cmds.rename(curve,name)
+	maya.cmds.parent(rename,grp)
+	setWStransform(str(rename) + '.cv[1]',pos1)
+
+	#returns name of curve and number of CV's
+	return (rename,howManyObjs-1)
+
+def clusterCurve(curve,nme,grp):
+	returnCV = []
+	maya.cmds.select(curve + '.cv[*]')
+	cvs = maya.cmds.ls(selection=True)
+	print ('cvs = ' + str(cvs))
+	print('cvs length = ' + str(len(cvs)))
+	rf = cvs[0].rfind(':')
+	print ('rf = ' + str(rf))
+	lenCVs = len(cvs[0])
+	print ('lenCVs = ' + str(lenCVs))
+	number = int(cvs[0][(rf+1):(lenCVs-1)])
+	cvName = cvs[0][0:rf-2]
+	print ('number = ' + str(number))
+	print ('cvName = ' + str(cvName))
+	
+	listOfClusters = []
+	for i in range(0,number+1,1):
+		returnCV.append(str(cvName) + '[' + str(i) + ']')
+		print ('clusterCurve : returnCV = ' + str(returnCV))
+		c = maya.cmds.cluster(str(curve) + '.cv[' + str(i) + ']')
+		nn = maya.cmds.rename(c[1],nme+str(i+1))
+		listOfClusters.append(nn)
+		if( grp != None ):
+			maya.cmds.parent(nn,grp)
+
+	print ('listOfClusters = ' + str(listOfClusters))
+	return (listOfClusters,returnCV)
+
+def reverseArray(array):
+	print ('reverseArray :: array = ' + str(array))
+	retrunArray = []
+	for i in range(len(array)-1,-1,-1):
+		retrunArray.append(array[i])
+	print ('reverseArray :: retrunArray = ' + str(retrunArray))
+	return retrunArray
+
+#### END   - Common Methods ###############################################################################################################################################################################
+
+#### START - Insert Extra Joints ##########################################################################################################################################################################
+def insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints):
+	print('insertExtraJoints00 :: selectedJoints = ' + str(selectedJoints))
+	maya.cmds.select( clear=True )
+	oldMasterJoints = []
+	howManySelJoints = len(selectedJoints)
+	alljoints = []
+	jointsInserted = []
+	print('insertExtraJoints00 :: howManySelJoints = ' + str(howManySelJoints))
+	for i in range(0,howManySelJoints-1,1):
+		print('insertExtraJoints00 :: i = ' + str(i))
+		masterJoint = selectedJoints[i]
+		alljoints.append(masterJoint)
+		print('insertExtraJoints00 :: masterJoint = ' + str(masterJoint))
+		print('insertExtraJoints00 :: selectedJoints[i] = ' + str(selectedJoints[i]))
+		t = maya.cmds.rename(selectedJoints[i],'temp_' + masterJoint)
+		oldMasterJoints.append(t)
+		print('insertExtraJoints00 :: oldMasterJoints = ' + str(oldMasterJoints))
+		getOldMasterJointPos = getWStransform(oldMasterJoints[i])
+		masterJointName = findName(masterJoint,sidePrefix)
+		translateAxis = '.t' + jointAimAxis
+		jointDistance = getDistance2Vectors(oldMasterJoints[i],selectedJoints[i+1])
+		jointTweendistance = jointDistance / (howManyTweenJoints + 1)
+		getMasterJointPos = getWStransform(oldMasterJoints[i])
+		previousJoint = maya.cmds.joint( n=masterJoint)
+
+		for j in range(1,howManyTweenJoints+1,1):
+			v = incrementPos(jointTweendistance,(j-1)*jointTweendistance,jointAimAxis)
+			previousJoint = maya.cmds.joint( previousJoint,n=sidePrefix + jointTypePrefix[i] + str(j), p=v )
+			alljoints.append(previousJoint)
+			jointsInserted.append(previousJoint)
+
+		setWStransform(masterJoint,getOldMasterJointPos)
+
+		if(jointAimAxis == 'x'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(1,0,0), skip=["x"] )
+			maya.cmds.delete(aim)
+		elif(jointAimAxis == 'y'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,1,0), skip=["y"] )
+			maya.cmds.delete(aim)
+		else:
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,0,1), skip=["z"] )
+			maya.cmds.delete(aim)
+	
+		setJointOriention(masterJoint)
+		parent = maya.cmds.listRelatives( oldMasterJoints[i], parent=True )
+		print('insertExtraJoints00 :: parent = ' + str(parent))
+		if(parent != None):
+			maya.cmds.parent(masterJoint,parent[0])
+		
+		maya.cmds.parent(selectedJoints[i+1],previousJoint)
+		maya.cmds.delete(oldMasterJoints[i])
+		maya.cmds.select( clear=True )
+
+	alljoints.append(selectedJoints[howManySelJoints-1])
+	print('insertExtraJoints00 :: alljoints = ' + str(alljoints))
+	print('insertExtraJoints00 :: jointsInserted = ' + str(jointsInserted))
+	return(jointsInserted,alljoints)
+
+def insertExtraJoints06(jointArray,howManyJointsInserted,sidePrefix,prefix,suffix,jointAimAxis):
+	jointsInserted = []
+	allJoints = []
+	print('insertExtraJoints06 :: howManyJointsInserted = ' + str(howManyJointsInserted))
+	print('insertExtraJoints06 :: jointArray = ' + str(jointArray))
+	
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		
+		increment = 1
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('insertExtraJoints06 :: nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i]
+		print('insertExtraJoints06 :: currentJoint = ' + str(currentJoint))
+		previousJoint = jointArray[i]
+		print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+		translate = maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted+1))
+		print('insertExtraJoints06 :: jointSpacing = ' + str(jointSpacing))
+		allJoints.append(currentJoint)
+		#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+		for j in range(0,howManyJointsInserted,1):
+			print('insertExtraJoints06 :: j = ' + str(j))
+			insertJoint = maya.cmds.insertJoint(previousJoint)
+			createJoint = maya.cmds.rename(insertJoint,prefix + jointArray[i] + '_' + str(increment)  + suffix)
+			jointsInserted.append(createJoint)
+			#print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+			allJoints.append(createJoint)
+			#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			previousJoint = createJoint
+			print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+			increment = increment + 1
+
+		maya.cmds.setAttr (nextJoint + '.t' + jointAimAxis,jointSpacing)
+		print ('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+		increment = 1
+
+	allJoints.append(nextJoint)
+	print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+	print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+	return (jointsInserted,allJoints)
+
+#### END  - Insert Extra Joints ##########################################################################################################################################################################	
+#### START  - SETUP IK SYSTEM   ##########################################################################################################################################################################	
+def createRoll(prefix,array,maxRoll,remapCurveValues,jointRollAxis,controlRollAxis,control,invert):
+	print('createRoll :: array = ' + str(array))
+	print('createRoll :: prefix = ' + str(prefix))
+	#maxRoll = 120
+	whichAxis = ['X', 'Y', 'Z']
+
+	#cREATE TEMP REMAP SYSTEM
+	inputNode = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	resultNode = maya.cmds.shadingNode('multiplyDivide',n='rollResult_multiplyDivide' + '1',au=True)
+	rollRemapNode = maya.cmds.shadingNode('remapValue',n='roll_remap' + '1',au=True) 
+	source =  inputNode + '.outputX'
+	desitination =  rollRemapNode + '.inputValue'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+	source =  rollRemapNode + '.outValue'
+	desitination =  resultNode + '.input1X'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+	i = 0
+	for v in remapCurveValues:
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_Position',v[0])
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_FloatValue',v[1])
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_Interp',v[2])
+		i = i + 1
+	
+	maya.cmds.setAttr(rollRemapNode + '.inputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.inputMax',maxRoll)
+	maya.cmds.setAttr(rollRemapNode + '.outputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.outputMax',1)
+
+	howManyMultiplyNodes = math.ceil(float(len(array))  / 3.0)
+	print('createRoll :: len(array)-1 = ' + str(len(array)-1))
+	print('createRoll :: maxRoll = ' + str(maxRoll))
+	fraction = maxRoll / (len(array)-1)
+	print('createRoll :: fraction = ' + str(fraction))
+	increment = 0#maxRoll
+	index = 0
+	brk = 0
+	multiplyNodes = []
+	groupNodes = []
+	for i in range(0,howManyMultiplyNodes,1):
+		rollMult = maya.cmds.shadingNode('multiplyDivide',n=prefix + 'roll_multiplyDivide' + '1',au=True)
+		multiplyNodes.append(rollMult)
+		for j in range(0,3,1):
+			if(brk == 0):
+				print('createRoll :: increment = ' + str(increment))
+				maya.cmds.setAttr(inputNode + '.input1X', increment * invert)
+				result = maya.cmds.getAttr(resultNode + '.outputX')
+				print('createRoll ::result = ' + str(result))
+				rollGroup = maya.cmds.group(em=True, n=(array[index] + '_ROLL'))
+				print('createRoll :: rollGroup = ' + str(rollGroup))
+				groupNodes.append(rollGroup)
+				maya.cmds.parent(rollGroup,array[index],r=True)
+				#loc = maya.cmds.spaceLocator(n=(array[index] + '_LOC'))
+				#maya.cmds.parent(loc,rollGroup,r=True)
+				maya.cmds.setAttr(rollMult + '.input2' + str(whichAxis[j]), result)
+				source =  control + '.rotate' + controlRollAxis
+				desitination = rollMult + '.input1' + str(whichAxis[j])
+				maya.cmds.connectAttr(source, desitination, force=True)
+				source =  rollMult + '.output' + whichAxis[j]
+				desitination = rollGroup + '.rotate' + jointRollAxis
+				maya.cmds.connectAttr(source, desitination, force=True)
+				increment = increment + fraction
+				if(index == len(array)-1):
+					brk = 1
+					print('createRoll ::brk = ' + str(brk))
+				index = index + 1
+		
+	maya.cmds.delete(inputNode)
+	maya.cmds.delete(resultNode)
+	maya.cmds.delete(rollRemapNode)
+
+	return (multiplyNodes,groupNodes)
+
+def connectRoll(rollArray,array,jointRollAxis):
+	whichAxis = ['X', 'Y', 'Z']
+	brk = 0
+	index = 0
+	groupNodes = []
+	for i in range(0,len(rollArray),1):
+		for j in range(0,3,1):
+			if(brk == 0):
+				rollGroup = maya.cmds.group(em=True, n=(array[index] + '_ROLL'))
+				groupNodes.append(rollGroup)
+				maya.cmds.parent(rollGroup,array[index],r=True)
+				source =  rollArray[i] + '.output' + whichAxis[j]
+				desitination = rollGroup + '.rotate' + jointRollAxis
+				maya.cmds.connectAttr(source, desitination, force=True)
+				if(index == len(array)-1):
+					brk = 1
+					print('createRoll ::brk = ' + str(brk))
+				index = index + 1
+	
+	return groupNodes
+
+def addStiffness(prefix,jointArray,ctrl):
+	stiffnessAttr = 'stiffness'
+	mainStiffness = ctrl + '.' + stiffnessAttr
+	print('mainStiffness = ' + str(mainStiffness))
+
+	doesStiffnessExist = maya.cmds.attributeQuery( stiffnessAttr, node=ctrl, exists=True )
+	if( doesStiffnessExist != True):
+		maya.cmds.addAttr(ctrl, longName='stiffness', attributeType='double', min=0, max=10, dv=0 )
+		maya.cmds.setAttr(mainStiffness,edit=True, keyable=True)
+
+	print('len(jointArray) = ' + str(len(jointArray)))
+	if(len(jointArray) != 0):
+		stretchNormaliseNode = prefix + 'stretchNormalise_setRange'
+		conn = maya.cmds.listConnections( mainStiffness, d=True, s=False, t='setRange' )
+		print('conn = ' + str(conn))
+		setRangeNode = ''
+		if( conn == None ):
+			setRangeNode = maya.cmds.shadingNode('setRange',n=stretchNormaliseNode,au=True)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		elif( len(conn) == 1):
+			setRangeNode = conn[0]
+			print('setRangeNode = ' + str(setRangeNode))
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		else:
+			print('ERROR :: ' + mainStiffness + ' has too many setRange nodes connected to it!!!')
+
+		socketAttribute1 = '.valueY'
+		connectorAttribute1 = '.stiffness'
+
+		connectorAttribute2 = '.outValueY'
+		socketAttribute2 = '.stiffness'
+
+		socket1 = setRangeNode + socketAttribute1
+		connector1 = mainStiffness
+		maya.cmds.connectAttr(connector1, socket1, force=True)
+
+		for i in range(0, len(jointArray), 1):
+			connector2 = setRangeNode + connectorAttribute2
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'X')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'Y')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+
+			socket2 = jointArray[i] + (socketAttribute2 + 'Z')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	else:
+		print('No Tween Joints to connect the Stiffness attribute')
+
+def setUpSplineVisScale(prefix,objArray,ctrl,scaleAttr,visAttr):
+	checkAttrExist(ctrl,visAttr,'long',0,1,1,True,False)
+	checkAttrExist(ctrl,scaleAttr,'double',0,100,1,False,False)
+
+	source1 = ctrl + '.' + scaleAttr
+	source2 = ctrl + '.' + visAttr
+
+	for c in objArray:
+		if maya.cmds.objExists(c):
+			print('setUpSplineVisScale :: c = ' + str(c))
+			destination = c + '.sx'
+			maya.cmds.connectAttr(source1, destination, force=True)
+			destination = c + '.sy'
+			maya.cmds.connectAttr(source1, destination, force=True)
+			destination = c + '.sz'
+			maya.cmds.connectAttr(source1, destination, force=True)
+
+			destination = c + '.visibility'
+			maya.cmds.connectAttr(source2, destination, force=True)
+
+def setUpIKFKparent(ikCtrl, fkCtrl, splineIkCtrl, constraintType , offset, name):
+	ik = None
+	constraint = None
+	#fk = None
+	if(ikCtrl != None):
+		constraint = setConstraint(constraintType, ikCtrl, splineIkCtrl, offset, name)
+		if(fkCtrl != None):
+			setConstraint(constraintType, fkCtrl, splineIkCtrl, offset, name)
+		else:
+			print('WARNING :: fkCtrl has no controls.')
+	else:
+		print('WARNING :: ikCtrl has no controls.')
+		if(fkCtrl != None):
+			constraint = setConstraint(constraintType, fkCtrl, splineIkCtrl, offset, name)
+		else:
+			print('WARNING :: fkCtrl has no controls.')
+	return constraint
+
+def setUpControlIsolation(cntrl,parentObj):
+	getParent = maya.cmds.listRelatives(cntrl)
+	
+
+def createSplineIKControls(jointsArray, masterCtrl):
+	grpArray = []
+	ctrlArray = []
+	#create the controls
+	for i in range(0, len(jointsArray), 1):
+		#select only the control joints
+		index = i # * divide
+		#print ('index = ' + index + ';   ')
+	
+		copy = maya.cmds.duplicate(masterCtrl, n=(jointsArray[index] + '_CTRL'))
+		group1 = maya.cmds.group(copy[0], n=(jointsArray[index] + '_AV'))
+		group2 = maya.cmds.group(group1, n=(jointsArray[index] + '_NULL'))
+		group3 = maya.cmds.group(group2, n=(jointsArray[index] + '_GRP'))
+		grpArray.append(group3)
+		ctrlArray.append(copy[0])
+			
+		parentConstraint = maya.cmds.pointConstraint( jointsArray[index], group3)
+		maya.cmds.delete(parentConstraint[0])
+		
+		maya.cmds.select(copy[0])
+		maya.cmds.makeIdentity( apply=True, translate=True, rotate=True, scale=True, normal=False)
+
+	return(ctrlArray,grpArray)
+
+def setColour(array,colour):
+	for a in array:
+		if maya.cmds.objExists(a):
+			shape = getShapeNodes(a)
+			maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+			maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+def whichConstaintType(value):
+	axis = 'parent'
+	if(value == 2):
+		axis = 'point'
+	elif(value == 3):
+		axis = 'aim'
+	return axis
+
+
+def buildWindow(windowName, windowTitle, line1, line2, line3, line4, line5):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 300))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	#form = maya.cmds.formLayout(windowName + '_form1')
+	#tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	#maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	#maya.cmds.columnLayout('')
+	#maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.textFieldGrp( windowName + '_prefix', label='Type Prefix:', text='L_leg_', en=True )
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldButtonGrp( windowName + '_ctrl', label='Get Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_ctrl' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line3 )
+	maya.cmds.textFieldGrp( windowName + '_scaleAttr', label='Type Attribute:', text='scaleSpline', en=True )
+	maya.cmds.text( label= line4 )
+	maya.cmds.textFieldGrp( windowName + '_visAttr', label='Type Attribute:', text='spline', en=True )
+	maya.cmds.text( label= line4 )
+	maya.cmds.textFieldButtonGrp( windowName + '_ikFkSwitch', label='Get Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_ikFkSwitch' + '","textFieldButtonGrp")' )
+	#maya.cmds.text( label= line5 )
+	#maya.cmds.textFieldButtonGrp( windowName + '_setrange', label='Get Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_setrange' + '","textFieldButtonGrp")' )
+	
+	#maya.cmds.radioButtonGrp( windowName + '_constraintType', label='Constraint Type:', labelArray3=['parent', 'point', 'aim'], numberOfRadioButtons=3, en=True, sl=1 )
+	#maya.cmds.text( label= '' )
+	#maya.cmds.text( label= line3 )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+def runWindow(windowName):
+
+	getCtrl = maya.cmds.textFieldButtonGrp( windowName + '_ctrl', q=True, text=True )
+	ctrlArray = getCtrl.split()
+
+	getPrefix = maya.cmds.textFieldGrp( windowName + '_prefix', q=True, text=True )
+	p = getPrefix.split()
+	prefix = p[0]
+
+	getVisAttr = maya.cmds.textFieldGrp( windowName + '_visAttr', q=True, text=True )
+	a = getVisAttr.split()
+	visAttr = ''
+	print ('a = ' + str(a))
+	print ('len(a) = ' + str(len(a)))
+	if(len(a) < 1):
+		visAttr = 'spline'
+	else:
+		visAttr = a[0]
+
+	getScaleAttr = maya.cmds.textFieldGrp( windowName + '_scaleAttr', q=True, text=True )
+	s = getScaleAttr.split()
+	scaleAttr = ''
+	print ('s = ' + str(s))
+	print ('len(s) = ' + str(len(s)))
+	if(len(s) < 1):
+		scaleAttr = 'scaleSpline'
+	else:
+		scaleAttr = s[0]
+
+	getIkfkSwitch = maya.cmds.textFieldButtonGrp( windowName + '_ikFkSwitch', q=True, text=True )
+	ikfkSwitchCTRL = getIkfkSwitch.split()[0]
+	existIkFkSwitchSetRange = ''
+	print ('ikfkSwitchCTRL = ' + str(ikfkSwitchCTRL))
+
+	setUpSplineVisScale(prefix,ctrlArray,ikfkSwitchCTRL,scaleAttr,visAttr)
+
+
+line1 = '	SELECT IK CONTROL OBJECTS :-'
+line2 = '	SELECT FK CONTROL OBJECTS :-'
+line3 = '	TYPE THE NAME OF THE SPLINE IK CTRL SCALE ATTRIBUTE :-'
+line4 = '	TYPE THE NAME OF THE SPLINE IK CTRL VISIBILITY ATTRIBUTE :-'
+line5 = '	SELECT OR TYPE EXISTING IKFK SETRANGE NODE (optional):-'
+
+windowTitle = 'Set Up Spline IK Ctrl Visibility Scale Switch'
+rebuildCurveWindowName = 'setUpSplineIKCtrlVisibilityScaleSwitch'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName, windowTitle, line1, line2, line3, line4, line5)

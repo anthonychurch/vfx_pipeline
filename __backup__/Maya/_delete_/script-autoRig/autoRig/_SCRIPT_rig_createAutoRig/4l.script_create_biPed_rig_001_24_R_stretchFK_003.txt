@@ -1,0 +1,125 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CREATE STRETCHY FK CONNECTIONS FOR THE ARM FK SETUP JOINTS=========================================================================================================================
+//INSTRUCTIONS;
+//1.create joints for the arms FK setup. eg; L_FK_shoulder, L_FK_humerus1, L_FK_humerus2, L_FK_humerus3, L_FK_elbow..................
+//2.select all the joints starting with the second from the top of the FK chain to the end joint, then select the FK_wrist_CTRL node
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel)-1;//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil(($howManyJoints) / 3);
+int $i;
+int $j;
+int $whichJoint; 
+int $break = 0;
+
+string $multiplierNodes[];
+
+string $sidePrefix = "R_";
+
+string $FKprefix = $sidePrefix + "FK_";
+
+string $prefix = $FKprefix + "arm_";
+
+string $stretchFKAttr = ".stretchFK";
+string $stretchFKNode = $prefix + "stretchFK_setRange";
+string $midCTRL = $FKprefix + "elbow_CTRL";
+
+
+string $FKMultiplierNode = $prefix + "multiplier_multiplyDivide";
+
+string $multiplierNodes[];
+
+
+string $CTRL = $last[0];
+
+string $startCTRL = $FKprefix + "shoulder_LOC"; 
+string $endCTRL = $FKprefix + "wrist_CTRL"; 
+
+string $startJoint = $sidePrefix + "shoulder";
+string $endJoint = $sidePrefix + "wrist";
+
+addAttr -ln "stretchFK" -at double -min 0 -max 10  -dv 0 $midCTRL;
+setAttr -e-keyable true ($midCTRL + $stretchFKAttr) 1;
+
+//START///////////////////////////////////CREATE CONDITION, NORMALISE MULTIPLYDIVIDE NODE AND 
+//START///////////////////////////////////CONNECT THE DISTANCE NODES DISTANCE ATTRIBUTE TO NORMALISE MULTIPLYDIVIDE NODES INPUT1X 
+//START///////////////////////////////////CONNECT THE NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+
+
+//create set range node to normalise the stretch FK attribute*********************START**********create set range node to normalise the stretch FK attribute
+string $setRangeNode = `shadingNode -n $stretchFKNode -asUtility setRange`;
+string $connector = $midCTRL + $stretchFKAttr;
+string $socket = $setRangeNode + ".valueX";
+connectAttr -force $connector $socket;
+
+setAttr ($setRangeNode + ".oldMaxX") 1000;
+setAttr ($setRangeNode + ".maxX") 1000;
+//create set range node to normalise the stretch FK attribute*********************END**********create set range node to normalise the stretch FK attribute
+
+
+//START/////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO FK JOINT TRANSLATEX
+for ($i = 0; $i < $howManyNodes; $i++){
+string $multiplierNode = `shadingNode -n ($FKMultiplierNode + "1") -asUtility multiplyDivide`;
+print("   $multiplierNode=  " + $multiplierNode + " :   ");
+$multiplierNodes[$i] = $multiplierNode;
+}
+//END///////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO FK JOINT TRANSLATEX
+
+
+//START/////////////////////////////////////////////////////////////CONNECT THE CONDITION NODE TO MULTIPLIER NODES READY TO BE CONNECT TO FK JOINT TRANSLATEX
+string $connectorAttribute1 = ".outValueX";//change this variable
+string $socketAttribute1 = ".input" ;//change this variable
+string $connector1 = $setRangeNode + $connectorAttribute1;
+
+string $connectorAttribute2 = ".output";
+
+$whichJoint = 0;
+
+
+
+//CONNECT CONDITION NODE TO MULYIPLIER NODES
+for($i = 0; $i < $howManyNodes; $i++){
+	int $multiply = $i + 1;//use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+	for($j = 1; $j < 4; $j++){
+		if($break == 0){
+		
+			string $whichAxis[4] = {" ", "X", "Y", "Z"};
+		
+			string $socket1 = $multiplierNodes[$i] + ($socketAttribute1 + "2" + $whichAxis[$j]);//$FKMultiplierNode + $multiply + ($socketAttribute1 + "2" + $whichAxis[$j]);
+			connectAttr -force $connector1 $socket1;
+			print("   $socket1=  " + $socket1 + " :   ");
+		
+			float $getAttr = getAttr ($sel[$whichJoint] + ".tx");
+			print("   $getAttr=  " + $getAttr + " :   ");
+
+			float $setAttr = `setAttr ($multiplierNodes[$i] + ($socketAttribute1 + "1" + $whichAxis[$j])) $getAttr`;
+		
+			string $connector2 = $FKMultiplierNode + $multiply + ($connectorAttribute2 + $whichAxis[$j]);
+			string $socket2 = ($sel[$whichJoint] + ".tx");
+			connectAttr -force $connector2 $socket2;
+
+
+			$whichJoint = $whichJoint + 1;
+	
+			print ("$whichJoint = " + $whichJoint + "/n");
+			print ("$howManyJoints = " + $howManyJoints + "/n");
+
+			//LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+			if($whichJoint == ($howManyJoints)){
+				$break = 1;
+			}
+		}
+	
+	}
+
+	
+	//print ("$i = " + $i + "/n");
+
+}
+//END//////////////////////////////////////////////////////////////CONNECT THE CONDITION NODE TO MULTIPLIER NODES READY TO BE CONNECT TO FK JOINT TRANSLATEX
+//================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -1,0 +1,42 @@
+import maya.cmds
+
+def mirrorObj(array,attr,axis):
+	for s in array:
+		temp = maya.cmds.duplicate(s,n='temp_' + str(s))[0]
+		rel = maya.cmds.listRelatives(temp,p=True,typ='transform')
+		if(rel[0] != None):
+			maya.cmds.parent(temp,w=True,a=True)
+		tempGrp = maya.cmds.group(n=temp + '_GRP',em=True)
+		maya.cmds.parent(temp,tempGrp,a=True)
+		maya.cmds.setAttr(tempGrp + '.' + attr + axis,-1)
+		maya.cmds.parent(temp,w=True,a=True)
+		posX = pos = maya.cmds.getAttr(temp + '.tx')
+		posY = pos = maya.cmds.getAttr(temp + '.ty')
+		posZ = pos = maya.cmds.getAttr(temp + '.tz')
+		rotX = pos = maya.cmds.getAttr(temp + '.rx')
+		rotY = pos = maya.cmds.getAttr(temp + '.ry')
+		rotZ = pos = maya.cmds.getAttr(temp + '.rz')
+
+		mirror = maya.cmds.duplicate(s,n='mirror_' + str(s))[0]
+		maya.cmds.parent(mirror,w=True,a=True)
+
+		maya.cmds.setAttr(mirror + '.tx',posX)
+		maya.cmds.setAttr(mirror + '.ty',posY)
+		maya.cmds.setAttr(mirror + '.tz',posZ)
+		maya.cmds.setAttr(mirror + '.rx',rotX)
+		maya.cmds.setAttr(mirror + '.ry',rotY)
+		maya.cmds.setAttr(mirror + '.rz',rotZ)
+
+		maya.cmds.delete(temp)
+		maya.cmds.delete(tempGrp)
+
+		
+
+sel = maya.cmds.ls(selection=True)
+
+attribute = 's'
+axis = 'x'
+mirrorObj(sel,attribute,axis)
+
+
+

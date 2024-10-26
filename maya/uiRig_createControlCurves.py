@@ -244,7 +244,7 @@ def runCreateSquareArrowCtrl( args ):
 	sideField = args[3]
 	axis = args[4]
 	scle = args[5]
-	#print tempName
+	print colArray
 	
 	getName = maya.cmds.textField( nmeField, q=True, text=True )
 	if not getName:

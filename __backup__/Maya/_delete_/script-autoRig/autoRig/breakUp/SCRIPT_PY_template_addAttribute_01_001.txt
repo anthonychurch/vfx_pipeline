@@ -1,0 +1,20 @@
+import maya.cmds
+import random
+import math
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+lastShape = getShapeNodes(last)
+
+attr = 'crvPos'
+min = 0
+max = 1
+default = 0.5
+type='double' #float
+
+for s in sel:
+	obj = s
+
+	# this has variables that need to be updated
+	newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+

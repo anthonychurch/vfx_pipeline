@@ -1,0 +1,91 @@
+import maya.cmds
+import random
+import math
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+	inputNode = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	source =  inputNode + '.outputX'
+	desitination =  rollRemapNode + '.inputValue'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+def ikStretchToe(prefix, srceObj, srceAttr, destArray, destAttr):
+
+	howManyJoints = len(destArray)
+	brake = 0
+	increment = 0
+	nodes = []
+	nodeName = prefix + '_multiplyDivide_'
+
+	#CONNECT CONDITION NODE TO MULYIPLIER NODES
+	for i in range(0,howManyJoints,1):
+		node = maya.cmds.shadingNode('multiplyDivide',n=nodeName + str(i),au=True) 
+		nodes.append(node)
+		whichAxis = [ 'X', 'Y', 'Z']
+		for j in range(0,3,1):
+			if(brake == 0):
+				#GET ATTRIBUTE OF JOINT
+				value = maya.cmds.getAttr(destArray[increment] + '.' + destAttr)
+				#SET ATTRIBUTE
+				maya.cmds.setAttr(nodes[i] + '.' + 'input2' + whichAxis[j], value)
+
+				#CONNECT CTRL TO MULT NODE
+				source = srceObj + '.' + srceAttr
+				destination = nodes[i] + '.' + 'input1' + whichAxis[j]
+				maya.cmds.connectAttr(source, destination, force=True)
+
+				source = nodes[i] + '.' + 'output' + whichAxis[j]
+				destination = destArray[increment] + '.' + destAttr
+				maya.cmds.connectAttr(source, destination, force=True)
+
+				increment += 1
+
+				#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+				if((increment + 1) == howManyJoints):
+					brake = 1
+	
+
+
+
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True, tail=1)[0]
+sidePrefix = 'L_'
+type = 'IK_'
+limbType = 'toe_'
+prefix = sidePrefix + type + limbType
+
+destAttr = 'ty'
+srceAttr = 'ikStretch'
+checkAttrExist(last,srceAttr,'double',-10,10,1,True,False)
+ikStretchToe(prefix, last, srceAttr, sel, destAttr)
+

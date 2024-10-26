@@ -1,0 +1,181 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+
+def findNameFromContextArray(array,txt):
+	value = None
+	for a in array:
+		test = a.endswith(txt)
+		if(test == True):
+			value = a
+	return value
+
+def findNameFromContext(name,txt):
+	value = None
+	test = name.endswith(txt)
+	if(test == True):
+		value = name
+	return value
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+def addAttrConnect(cntrl,objArray,suffix,type,min,max,default,keyable,attr):
+
+	for o in objArray:
+		checkAttrExist(cntrl,o + suffix,type,min,max,default,keyable,True)
+		destination = o + '.' + attr
+		source =  cntrl + '.' + o + suffix
+		maya.cmds.connectAttr(source, destination, force=True)
+
+
+def setColour(array,colour):
+	for a in array:
+		if maya.cmds.objExists(a):
+			shape = getShapeNodes(a)
+			maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+			maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+def whichConstaintType(value):
+	axis = 'parent'
+	if(value == 2):
+		axis = 'point'
+	elif(value == 3):
+		axis = 'aim'
+	return axis
+
+
+def buildWindow(windowName, windowTitle, line1, line2):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 300))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	#form = maya.cmds.formLayout(windowName + '_form1')
+	#tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	#maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	#maya.cmds.columnLayout('')
+	#maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldButtonGrp( windowName + '_ctrl', label='Get Objects:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_ctrl' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line3 )
+	maya.cmds.textFieldButtonGrp( windowName + '_parent', label='Type Attribute:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_parent' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	#maya.cmds.button(label='?', height = questionButtonHeight)
+	#maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+def runWindow(windowName):
+
+	getCtrl = maya.cmds.textFieldButtonGrp( windowName + '_ctrl', q=True, text=True )
+	ctrlArray = getCtrl.split()
+	cntrl = ctrlArray[0]
+
+	obj = maya.cmds.textFieldGrp( windowName + '_parent', q=True, text=True )
+	objArray = obj.split()
+
+	#getSuffix = maya.cmds.textFieldGrp( windowName + '_parent', q=True, text=True )
+	#s = getSuffix.split()
+	#suffix = s[0]
+
+	addAttrConnect(cntrl,objArray,'_Up','double',-100,100,0,True,'ry')
+
+
+
+
+line1 = '	SELECT CONTROL OBJECTS :-'
+line2 = '	SELECT PARENT OBJECTS :-'
+
+
+
+windowTitle = 'Set Up Isolate Control'
+rebuildCurveWindowName = 'setUpIsolateControl'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName, windowTitle, line1, line2)

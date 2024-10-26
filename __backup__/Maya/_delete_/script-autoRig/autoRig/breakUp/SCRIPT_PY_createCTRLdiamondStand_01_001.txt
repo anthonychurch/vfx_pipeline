@@ -1,0 +1,48 @@
+import maya.cmds
+import random
+import math
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+#REWORKED FUNCTION 
+def createDiamondStandCtrl(name,colour,axis,scle):
+	axis = axis.upper()
+	#CREATE LINEAR (1 DEGREE) CURVE 
+	maya.cmds.curve(d=1,p=[(0,0,0),(0,0,16),(4,0,20),(0,0,24),(-4,0,20),(0,0,16)],k=[0,1,2,3,4,5])
+	ctrl = maya.cmds.ls(selection=True)[0]
+	print('createSquareArrowCtrl :: ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	ctrl = maya.cmds.ls(selection=True)[0]
+	print('createSquareArrowCtrl :: ctrl = ' + str(ctrl))
+
+	maya.cmds.closeCurve(ctrl,ch=1,ps=1,rpo=1,bb=0,bki=1,p=0.1)
+	shpe = getShapeNodes(ctrl)
+	print('createSquareArrowCtrl :: shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(ctrl) + '.rotate' + str(axis), 90)
+	maya.cmds.setAttr(str(ctrl) + '.scaleX', scle)
+	maya.cmds.setAttr(str(ctrl) + '.scaleY', scle)
+	maya.cmds.setAttr(str(ctrl) + '.scaleZ', scle)
+	maya.cmds.makeIdentity( str(ctrl), apply=True, t=1, r=1, s=1 )
+	return ctrl
+
+
+#0=Right, 1=Left, 2=Centre, 3=Misc
+IKcolour = [14,13,17]
+FKColour = [23,31,25]
+splineIKColour = [6,15,29]
+clothColour = [9,30,21]
+faceColour = [22,10,26]
+misc = [4,7,11]
+
+
+
+createDiamondStandCtrl('temp',FKColour[0],'y',1)

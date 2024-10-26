@@ -1,0 +1,27 @@
+string $sel[] = `ls -sl`;
+float $count =  size($sel);
+//print $count;
+
+for($i = 0; $i < $count; $i++)
+{
+    //Get shape
+    string $shape[] = `listRelatives -s $sel[$i]`;
+    //print $shape[0];
+    int $size = size($shape[0]);
+    //print $size;
+
+    if($size > 0)
+        {
+            //Get Parent
+            string $parent[] = `listRelatives -parent $sel[$i]`;
+            //print $parent[0];
+            string $parentChild = "|"+$parent[0]+"|"+$sel[$i]+"|"+$shape[0];
+            //print $parentChild;
+            vray addAttributesFromGroup $parentChild vray_objectID 1;
+        }
+}
+//Reference
+//Transform
+//vray addAttributesFromGroup box_grp_05|pCube151 vray_objectID 1;
+//Shape
+//vray addAttributesFromGroup |box_grp_05|pCube144|pCubeShape144 vray_objectID 1;

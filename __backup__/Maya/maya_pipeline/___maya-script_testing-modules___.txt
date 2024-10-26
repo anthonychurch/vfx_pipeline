@@ -1,0 +1,28 @@
+import sys
+
+# Clear Module cache
+del sys.modules['go']
+del sys.modules['lumpy']
+del sys.modules['utilities']
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesCurves']
+del sys.modules['utilitiesRigging']
+
+
+import go  #The go module references the lumpy module
+import lumpy
+import utilities
+
+maya.cmds.clearCache(all=True)
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+
+
+go.isOk()
+
+
+lumpy.setColour(sel,14)
+#utilities.setColour(sel,14)
+
+utilities.matchPosRot(sel[0],last)

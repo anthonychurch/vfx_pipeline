@@ -1,0 +1,118 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//INSERT EXTRA CONTROL JOINTS BETWEEN THE INITIAL LAYOUT JOINTS
+//print("__________________________INSERT EXTRA CONTROL JOINTS BETWEEN THE INITIAL LAYOUT JOINTS__________________________");
+//INSTRUCTIONS;
+//1. select the layout joints (if arm from the shoulder to wrist, if leg, from hip to ankle). 
+//2. 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+print ($howManyJoints);
+select -cl  ;
+
+int $i;
+int $j;
+int $nextIndex;
+string $currentJoint;
+string $nextJoint;
+int $howManyJointsInserted = 1; 
+int $increment = 1;//$howManyJointsInserted;
+float $jointSpacing;
+string $jointsInserted[];
+
+int $PosOrNeg;
+
+string $insertedJointsName;
+
+float $jointRadius = `getAttr ($sel[0] + ".radius")`;
+
+string $sidePrefix = "L_";
+
+string $sub[3] = {($sidePrefix + "IK_"), ($sidePrefix + "FK_"), ($sidePrefix + "SPL_")};
+string $nameOfFirstJoint = $sel[0];
+print $nameOfFirstJoint;
+
+string $tweenJoint1 = $sidePrefix + "humerus";
+string $tweenJoint2 = $sidePrefix + "foreArm";
+
+if($sidePrefix == "L_"){
+	$PosOrNeg = 1;
+	print("LEFT");
+} else {
+	$PosOrNeg = -1;
+	print("RIGHT");
+}
+
+
+//create the controls
+for($i = 0; $i < $howManyJoints-1; $i++){
+	
+	$nextIndex = $i + 1;
+	$nextJoint = $sel[$nextIndex];
+	$currentJoint = $sel[$i];
+	float $tx = `getAttr ($nextJoint  + ".tx")`;
+	$jointSpacing = $PosOrNeg * ($tx / ($howManyJointsInserted +1));
+
+	string $createJoint = `joint -n ($sel[$i] + "_INIT")`;
+	string $jointINIT = $createJoint;
+	string $parentContrain[] = `parentConstraint $currentJoint $createJoint`;
+	delete $parentContrain[0];
+
+	string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+	delete $aimConstrain[0];
+	
+	if($i < (ceil($howManyJoints/2)-1)){
+		$insertedJointsName = $tweenJoint1;
+	} else { 
+		$insertedJointsName = $tweenJoint2;
+		}
+	
+	 
+		for($j = 1; $j < ($howManyJointsInserted+1); $j++){
+
+			
+		
+			$createJoint = `joint -n ($insertedJointsName + $increment)`;
+			$jointsInserted[$j - 1] = $createJoint;
+						
+			setAttr ($createJoint + ".tx") $jointSpacing;
+			setAttr ($createJoint + ".radius") $jointRadius;
+			$increment = $increment + 1;
+
+		}
+
+	print ($jointsInserted[$howManyJointsInserted-1]);
+	parent $jointsInserted[0] $currentJoint;
+	parent $nextJoint $jointsInserted[$howManyJointsInserted-1];
+	delete $jointINIT;
+	//setAttr ($sel[$nextIndex] + ".tx") $jointSpacing;
+	$increment = 1;
+	
+}
+
+//NEED TO COMPLETE
+
+for($i = 0; $i < 3; $i++){
+	string $duplicated[] = `duplicate sel[0]`;
+	parent -w $duplicated[0];
+	select $duplicated[0];
+	select -hi;
+	
+	string $renamed[];
+	string $duplicateChain[] = `ls -sl`;
+	float $size = size($duplicateChain);
+	for($j=0;$j<$size;$j++){
+		string $temp = substitute $sidePrefix $sel[$j] $sub[$i];
+		$renamed[$j] = $temp;
+	}
+	$nameOfFirstJoint = `substitute $sidePrefix $nameOfFirstJoint $sub[$i]`;
+	rename $renamed[0] $nameOfFirstJoint; 
+	
+}
+
+
+
+

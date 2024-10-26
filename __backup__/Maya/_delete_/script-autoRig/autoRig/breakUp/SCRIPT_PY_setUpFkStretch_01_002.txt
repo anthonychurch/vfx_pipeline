@@ -1,0 +1,91 @@
+import maya.cmds
+import random
+import math
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+	inputNode = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	source =  inputNode + '.outputX'
+	desitination =  rollRemapNode + '.inputValue'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+def createShadeNode(type, name, howMany):
+	nodes = []
+	for i in range(0,howMany,1):
+		nodes = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	return groupNodes
+
+#NEED TO CHANGE for i in range(0,len(array)-1,1):
+def connectFKstretch(prefix,array,attr,axis,driver,driverAttr):
+	whichAxis = ['X', 'Y', 'Z']
+	brk = 0
+	index = 0
+	length = len(array)-1
+	
+	nodes = []
+	
+	for i in range(0,length,1):
+		node = maya.cmds.shadingNode('multiplyDivide',n=prefix + 'stretch_multiplyDivide' + str(i),au=True)
+		nodes.append(node)
+		for j in range(0,3,1):
+			if(brk == 0):
+				value = maya.cmds.getAttr(array[index]  + '.' + attr + axis)
+				print (value)
+				maya.cmds.setAttr(nodes[i]  + '.' + 'input2' + whichAxis[j], value)
+
+				source =  driver + '.' + driverAttr
+				desitination = nodes[i] + '.' + 'input1' + whichAxis[j]
+				maya.cmds.connectAttr(source, desitination, force=True)
+
+				source =  nodes[i] + '.output' + whichAxis[j]
+				desitination = array[index]  + '.' + attr + axis
+				maya.cmds.connectAttr(source, desitination, force=True)
+				
+				if(index == length):
+					brk = 1
+					
+				index = index + 1
+
+	return nodes
+
+
+
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail = 1)[0]
+prefix = 'L_arm_'
+axisType = 't'
+axis = 'y'
+attr = 'FKstetch'
+checkAttrExist(last,attr,'double',-100,100,1,True,True)
+
+connectFKstretch(prefix,sel,axisType,axis,last,attr)

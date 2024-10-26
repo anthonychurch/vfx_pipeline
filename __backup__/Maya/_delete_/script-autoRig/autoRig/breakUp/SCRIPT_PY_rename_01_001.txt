@@ -1,0 +1,48 @@
+import maya.cmds
+
+
+def reverseArray(array):
+	print ('reverseArray :: array = ' + str(array))
+	retrunArray = []
+	for i in range(len(array)-1,-1,-1):
+		retrunArray.append(array[i])
+	print ('reverseArray :: retrunArray = ' + str(retrunArray))
+	return retrunArray
+
+sel = maya.cmds.ls(selection=True,allPaths=True)
+i = 1
+newName = ''
+prefix = 'ver01'
+suffix = ''
+
+newArray = []
+
+if(suffix != ''):
+	suffix = '_' + suffix
+	useSuffix = True
+
+if(prefix != ''):
+	prefix =  prefix + '_'
+	usePrefix = True
+
+if(newName != ''):
+	for s in sel:
+		name = prefix + newName + '_' + str(i) + suffix
+		newArray.append(name)
+		i = i + 1
+
+	reversedNewArray = reverseArray(newArray)
+	reversedOldArray = reverseArray(sel)
+	i = 0
+
+	for r in reversedNewArray:
+		#print(reversedOldArray[i])
+		maya.cmds.rename(reversedOldArray[i],r)
+		i = i + 1
+
+else:
+	for s in sel:
+		name = prefix + s + suffix
+		maya.cmds.rename(s,name)
+		i = i + 1
+

@@ -1,0 +1,113 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//
+//
+//INSTRUCTIONS;
+
+//Make sure that there is a seperate joint chain from shoulder to wrist for splineIK, FK and IK;  
+//Make sure that there is a seperate joint chain from hip to ankle for splineIK, FK and IK; 
+//Make sure that there is a seperate joint chain from pelvis to neck combining FK and IK; 
+
+//0. MASTER BODY CONTROLS
+//Create 2 controls:-
+//a. MASTER_CTRL (its pivot point is centred on the world axis and its aim axis must be on the Y-axis);
+//b. waist_CTRL (its pivot point is centred on the spine1 joint or a couple joints down stream from the pelvis joint. This is parented under the MASTER_CTRL)
+//Add the following attributes; LArmIkFk (0 - 10); RArmIkFk (0 - 10); LArmSpline (0 - 10); RArmSpline (0 - 10); LLegIkFk (0 - 10); RLegIkFk (0 - 10); 
+//LArmSpline (0 - 10); RArmSpline (0 - 10); SpineIkFK (0 - 10)
+//FREEZE ALL TRANSFORMATIONS
+
+//1. IK Spine RIG CONTROL:
+//Create 13 controls:-
+//a. FK_pelvis_CTRL (its pivot point is centred on the spine1 joint or a couple joints down stream from the pelvis joint. This is parented under the waist_CTRL)
+//b. FK_pelvis_LOC (its pivot point is centred on the pelvis joint and parented under the FK_pelvis_CTRL)
+//c. FK_stomach_CTRL (its pivot point is centred on the spine3 joint and parented under the waist_CTRL)
+//d. FK_chest_CTRL (its pivot point is centred on the spine5 joint and parented under the FK_stomach_CTRL)
+//e. FK_chest_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//f. FK_shoulder_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//g. FK_rib_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//h. L_shoulder_LOC (its pivot point is centred on the spine8 joint and parent constrained between 1. IK_chest_CTRL; 2. FK_chest_CTRL)
+//i. L_clavicle_LOC (its pivot point is centred on the shoulder joint and parented under L_shoulder_LOC)
+//j. R_shoulder_LOC (its pivot point is centred on the spine8 joint and parent constrained between 1. IK_chest_CTRL; 2. FK_chest_CTRL)
+//k. R_clavicle_LOC (its pivot point is centred on the shoulder joint and parented under R_shoulder_LOC)
+//l. L_clavicle_CTRL (its pivot point is centred on the shoulder joint and point under L_clavicle_LOC. L_clavicle_CTRL rotate is to be connected to L_clavicle_LOC rotate)
+//m. R_clavicle_CTRL (its pivot point is centred on the shoulder joint and point under R_clavicle_LOC. R_clavicle_CTRL rotate is to be connected to R_clavicle_LOC rotate)
+//FREEZE ALL TRANSFORMATIONS
+
+//2. IK Spine RIG CONTROL:
+//Create 7 controls:-
+//a. IK_pelvis_CTRL (its pivot point is centred on the spine1 joint or a couple joints down stream from the pelvis joint. This is parented under the waist_CTRL)
+//b. IK_pelvis_LOC (its pivot point is centred on the pelvis joint and parented under the FK_pelvis_CTRL)
+//c. IK_stomach_CTRL (its pivot point is centred on the spine3 joint and parented under the waist_CTRL)
+//d. IK_chest_CTRL (its pivot point is centred on the spine5 joint and parented under the FK_stomach_CTRL)
+//e. IK_chest_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//f. Ik_shoulder_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//g. IK_rib_LOC (its pivot point is centred on the appropriate splineIK cluster node and parented under the FK_chest_CTRL)
+//FREEZE ALL TRANSFORMATIONS
+
+//3. IK FOOT RIG CONTROL:
+//create a IK foot rig control and add the following Attributes: heelUp (-90 - 90); heelSide (-90 - 90); ballUp ( -90 - 90); ballSide ( -90 - 90);
+//toeUp ( -30 - 30); tipToeUp (-180 - 180); tipToeSide ( -90 - 90); footRoll ( -90 - 90); stiffness ( 0 - 10); twist (-1500 - 1500);
+//Make sure its pivot point is centred under the ankle joint and is level to the ground
+//Name it "L_IK_foot_CTRL".
+//FREEZE ALL TRANSFORMATIONS 
+
+//4. FK FOOT RIG CONTROL:
+//Create 4 controls:-
+//a. L_FK_hip_CTRL (its pivot point is centred on the hip joint and parent constrained to the FK_pelvis_CTRL); 
+//b. L_FK_knee_CTRL (its pivot point is centred on the knee joint and parent under the L_FK_hip_CTRL)
+//c. L_FK_foot_CTRL (its pivot point is centred on the ankle joint and parent under the L_FK_knee_CTRL)
+//d. L_FK_toe_CTRL (its pivot point is centred on the ball joint and parent under the L_FK_foot_CTRL)
+//FREEZE ALL TRANSFORMATIONS 
+
+//5. SPLINE LEG RIG CONTROL:
+//Create 1 controls:- 
+//a. L_SPL_arm_MASTER (its pivot point is centred on the world axis and its aim axis must be on the Z-axis); 
+//use a scrpt to duplicate, name and position these controls
+//FREEZE ALL TRANSFORMATIONS 
+
+//6. IK ARM RIG CONTROL:
+//Create 2 controls:- 
+//a. L_IK_shoulder_LOC (its pivot point is centred on the shoulder joint and parent constrained to the L_clavicle_CTRL); 
+//b. L_IK_wrist_CTRL (its pivot point is centred on the wrist joint and parent under the L_IK_shoulder_LOC)
+//Add the following attributes; stiffness (0 - 10); twist (-1500 - 1500) 
+//FREEZE ALL TRANSFORMATIONS 
+
+//7. FK ARM RIG CONTROL:
+//Create 3 controls:- 
+//a. L_FK_shoulder_CTRL (its pivot point is centred on the shoulder joint and parent constrained to the L_clavicle_CTRL); 
+//b. L_FK_elbow_CTRL (its pivot point is centred on the elbow joint and is parented under the L_FK_shoulder_CTRL)
+//c. L_FK_wrist_LOC (its pivot point is centred on the wrist joint and is parented under the L_FK_elbow_CTRL)
+//FREEZE ALL TRANSFORMATIONS 
+
+//8. SPLINE ARM RIG CONTROL:
+//Create 1 controls:- 
+//a. L_SPL_leg_MASTER (its pivot point is centred on the world axis and its aim axis must be on the Z-axis); 
+//use a scrpt to duplicate, name and position these controls
+//FREEZE ALL TRANSFORMATIONS 
+
+//9. HAND RIG CONTROL:
+//Create 1 controls:-
+//a. L_hand_CTRL (its pivot point is centred on the hand joint and will be parent constrained between 1. L_IK_wrist_CTRL; 2. L_FK_wrist_LOC); 
+//b. L_thumb (its pivot point is centred on the thumb1 joint, out of 4)
+//Add the following attributes; middleJoint (-180 - 180); lastJoint (-180 - 180)
+//c. L_index (its pivot point is centred on the index1 joint, out of 4)
+//Add the following attributes; middleJoint (-180 - 180); lastJoint (-180 - 180)
+//d. L_middle (its pivot point is centred on the middle1 joint, out of 4)
+//Add the following attributes; middleJoint (-180 - 180); lastJoint (-180 - 180) 
+//d. L_ring (its pivot point is centred on the ring1 joint, out of 4)
+//Add the following attributes; middleJoint (-180 - 180); lastJoint (-180 - 180) 
+//d. L_pinky (its pivot point is centred on the pinky1 joint, out of 4)
+//Add the following attributes; middleJoint (-180 - 180); lastJoint (-180 - 180)
+//use a scrpt to connect controls to the joints
+//All controls to be parented under the L_hand_CTRL
+//FREEZE ALL TRANSFORMATIONS 
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

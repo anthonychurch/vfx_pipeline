@@ -1,0 +1,56 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CONNECT THE STIFFNESS ATTRIBUTE OF THE IK WRIST CONTROL TO ALL THE IK JOINTS BETWEEN THE SHOULDER, ELBOW AND WRIST===================================
+//Instruction:
+//1.ensure that IK wrist Control has the stiffness attribute added with a min = 0 and max = 10
+//2.select all the IK Joints between the shoulder, elbow and wrist joints, then select the IK wrist Control LAST!
+
+
+string $sel[] = `ls -sl`;
+int $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+int $i;
+
+string $IKsetRange = "L_IK_arm_setRange";
+
+
+
+//START/////////////////////////////////////CREATE SET RANGE NODE TO REMAP THE VALUES FROM THE STIFFNESS ATTRIBUTE
+string $setRangeNode = `shadingNode -n ($IKsetRange + "1") -asUtility setRange`;
+
+setAttr ($setRangeNode + ".oldMaxX") 10;
+setAttr ($setRangeNode + ".maxX") 1;
+
+
+
+//START/////////////////////////////////////CREATE SET RANGE NODE TO REMAP THE VALUES FROM THE STIFFNESS ATTRIBUTE
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".stiffness";//change this variable
+
+
+string $connectorAttribute2 = ".outValueX";//change this variable
+string $socketAttribute2 = ".stiffness";//change this variable
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $connector1 = $last[0] + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+
+for($i = 0; $i < ($size - 1); $i++){
+			
+			
+			string $connector2 = $setRangeNode + $connectorAttribute2;
+			
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "X");
+			connectAttr -force  $connector2  $socket2;
+
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "Y");
+			connectAttr -force  $connector2  $socket2;
+
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "Z");
+			connectAttr -force  $connector2  $socket2;
+
+}
+//================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

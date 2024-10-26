@@ -1,0 +1,62 @@
+import maya.cmds
+import random
+import math
+
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+
+def matchPosRot(obj,sourceObj):
+	pos = getWStransform(sourceObj)
+	rot = getWSrotate(sourceObj)
+	setWStransform(obj,pos)
+	setWSrotate(obj,rot)
+
+def matchRemoveSuffix(obj,sourceObj,suffix):
+	oldName = sourceObj
+	replaceSuffix = oldName.rfind(suffix)
+	newName = oldName[0:replaceSuffix]
+	newObj = maya.cmds.rename(obj,newName)
+	print("matchRemoveSuffix :: newObj = " + str(newObj))
+	return newObj
+
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+
+for i in range(0,len(sel)-1,1):
+	duplicate = maya.cmds.duplicate(last)[0]
+	print("duplicate = " + str(duplicate))
+	newObj = matchRemoveSuffix(duplicate,sel[i],'_CTRL')
+	print("newObj = " + str(newObj))
+	matchPosRot(newObj,sel[i])
+	maya.cmds.parentConstraint(sel[i],newObj,mo=False)

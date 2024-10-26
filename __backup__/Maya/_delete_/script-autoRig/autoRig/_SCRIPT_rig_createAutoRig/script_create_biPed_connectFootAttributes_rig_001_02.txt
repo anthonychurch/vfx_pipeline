@@ -1,0 +1,57 @@
+//START SCRIPT++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Connect Foot Attrtibutes to IK Foot Controls================================================================================================================================
+//INSTRUCTIONS;
+//1.Select IK foot Control
+//2.Make sure that you use the script_create_biPed_foot_rig_xxx_xx sccript to build the foot rig
+//3.Make sureit has the following attributes "heelUp", "heelSide", "ballUp", "ballSide", "toeUp", "tipToeUp", "tipToeSide", "footRoll";
+//4.Check the names of all the variables 
+
+
+
+//Connect Foot Attrtibutes to IK Foot Controls*******************************************START*******Connect Foot Attrtibutes to IK Foot Controls
+string $sel[] = `ls -sl`;
+
+string $footControl = $sel[0];//"XX_X_CTRL_foot";  "X" means any letter or number
+string $prefix = "IK_L_";
+
+
+string $tipToe_LOC = $prefix + "tipToe_LOC";
+string $heel_LOC = $prefix + "heel_LOC";
+string $ball_LOC1 = $prefix + "ball_LOC1";
+string $ankle_LOC1 = $prefix + "ankle_LOC1";
+string $toe_LOC1 = $prefix + "toe_LOC1";
+string $toe_LOC2 = $prefix + "toe_LOC2";
+
+string $heelUp_ATTR = ".heelUp";
+string $heelSide_ATTR = ".heelSide";
+string $ballUp_ATTR = ".ballUp";
+string $ballSide_ATTR = ".ballSide";
+string $toeUp_ATTR = ".toeUp";
+string $tipToeUp_ATTR = ".tipToeUp";
+string $tipToeSide_ATTR = ".tipToeSide";
+string $footRoll_ATTR = ".footRoll";
+
+
+
+
+connectAttr -force ($footControl + $heelUp_ATTR) ($heel_LOC + ".rotateX");
+connectAttr -force ($footControl + $heelSide_ATTR) ($heel_LOC + ".rotateY");
+connectAttr -force ($footControl + $ballUp_ATTR) ($ball_LOC1 + ".rotateX");
+connectAttr -force ($footControl + $ballSide_ATTR) ($ball_LOC1 + ".rotateY");
+connectAttr -force ($footControl + $footRoll_ATTR) ($ball_LOC1 + ".rotateZ");
+connectAttr -force ($footControl + $toeUp_ATTR) ($toe_LOC1 + ".rotateX");
+connectAttr -force ($footControl + $tipToeUp_ATTR) ($tipToe_LOC + ".rotateX");
+connectAttr -force ($footControl + $tipToeSide_ATTR) ($tipToe_LOC + ".rotateY");
+
+
+
+//Connect Foot Attrtibutes to IK Foot Controls*******************************************END*******Connect Foot Attrtibutes to IK Foot Controls
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//ENDT SCRIPT++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+	
+
+	
+	
+
+

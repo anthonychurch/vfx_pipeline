@@ -1,0 +1,50 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE
+//print("__________________________INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the spline IK arm joints 
+//2. 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+
+
+int $i;
+int $j;
+int $nextJoint;
+int $howManyJointsInseted = 4; 
+int $increment = $howManyJointsInseted;
+float $jointSpacing;
+
+float $jointRadius = `getAttr ($sel[0] + ".radius")`;
+
+
+//create the controls
+for($i = 0; $i < $howManyJoints-1; $i++){
+	$nextJoint = $i + 1;
+	float $tx = `getAttr ($sel[$nextJoint] + ".tx")`;
+	$jointSpacing = $tx / ($howManyJointsInseted +1);
+
+	for($j = 1; $j < ($howManyJointsInseted + 1); $j++){
+		
+
+		string $insertJoint = `insertJoint $sel[$i]`;
+		string $renameJoint = `rename $insertJoint ($sel[$i] + "_" + $increment)`;
+		
+		setAttr ($renameJoint + ".tx") $jointSpacing;
+		setAttr ($renameJoint + ".radius") $jointRadius;
+		$increment = $increment - 1;
+
+	}
+
+	setAttr ($sel[$nextJoint] + ".tx") $jointSpacing;
+	$increment = $howManyJointsInseted;
+	
+}
+
+
+
+

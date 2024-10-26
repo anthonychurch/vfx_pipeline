@@ -1,0 +1,81 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE
+//print("__________________________INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE__________________________");
+//INSTRUCTIONS;
+//1. select the SPL joints 
+//2. 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+select -cl  ;
+
+int $i;
+int $j;
+int $nextIndex;
+string $currentJoint;
+string $nextJoint;
+int $howManyJointsInserted = 6;//4 if there 3 tween control joints; 5 if there 2 tween control joints; 6 if there 1 tween control joints;
+int $increment = 1;
+float $jointSpacing;
+string $jointsInserted[];
+
+float $jointRadius = `getAttr ($sel[0] + ".radius")`;
+
+$sidePrefix = "R_";
+
+int $PosOrNeg;
+
+if($sidePrefix == "L_"){
+	$PosOrNeg = 1;
+	//print("LEFT");
+} else {
+	$PosOrNeg = -1;
+	//print("RIGHT");
+}
+
+
+//create the controls
+for($i = 0; $i < $howManyJoints-1; $i++){
+	
+	$nextIndex = $i + 1;
+	$nextJoint = $sel[$nextIndex];
+	$currentJoint = $sel[$i];
+	float $tx = `getAttr ($nextJoint  + ".tx")`;
+	$jointSpacing = $PosOrNeg * ($tx / ($howManyJointsInserted +1));
+
+	string $createJoint = `joint -n ($sel[$i] + "_INIT")`;
+	string $jointINIT = $createJoint;
+	string $parentContrain[] = `parentConstraint $currentJoint $createJoint`;
+	delete $parentContrain[0];
+
+	string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+	delete $aimConstrain[0];
+	
+	 
+		for($j = 1; $j < ($howManyJointsInserted+1); $j++){
+		
+			$createJoint = `joint -n ($sel[$i] + "_" + $increment)`;
+			$jointsInserted[$j - 1] = $createJoint;
+						
+			setAttr ($createJoint + ".tx") $jointSpacing;
+			setAttr ($createJoint + ".radius") $jointRadius;
+			$increment = $increment + 1;
+
+		}
+	print ($jointsInserted[$howManyJointsInserted-1]);
+	parent $jointsInserted[0] $currentJoint;
+	setAttr ( $jointsInserted[0] + ".jointOrientZ") 0;
+	parent $nextJoint $jointsInserted[$howManyJointsInserted-1];
+	setAttr ($nextJoint + ".jointOrientZ") 0;
+	delete $jointINIT;
+	//setAttr ($sel[$nextIndex] + ".tx") $jointSpacing;
+	$increment = 1;
+	
+}
+
+
+
+

@@ -1,0 +1,9 @@
+import maya.cmds
+
+
+sel = maya.cmds.ls(selction=True):
+
+for j in sel:
+	maya.cmds.joint( j, e=True, zso=True, oj='xyz', sao='yup' )
+
+

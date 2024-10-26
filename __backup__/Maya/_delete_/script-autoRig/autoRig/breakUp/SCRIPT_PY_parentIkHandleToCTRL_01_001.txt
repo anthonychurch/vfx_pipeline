@@ -1,0 +1,9 @@
+import maya.cmds
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+masterObj = sel[0]
+lastChar = masterObj.rfind('_')
+newName = masterObj[0:lastChar]
+maya.cmds.parent(last,masterObj)
+maya.cmds.rename(last,newName + '_ikHandle1')

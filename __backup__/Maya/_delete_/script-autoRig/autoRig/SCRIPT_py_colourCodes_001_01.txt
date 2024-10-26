@@ -1,0 +1,16 @@
+4 = DarkRed (SplineIK Right)
+7 = DarkGreen (SplineIK Left)
+24 = DarkYellow (SplineIK Centre)
+5 = misc (SplineIK)
+
+13 = midRed (IK Right)
+14 = midGreen (IK Left)
+17 = midYellow (IK Centre)
+11 = misc (IK)
+
+23 = lightGreen (FK Left)
+30 = lifhtRed (FK Right)
+22 = lightYellow (Fk Centre)
+28 = misc (FK)
+
+

@@ -1,0 +1,21 @@
+import maya.cmds
+import random
+import math
+
+def getShapeNodes(obj):
+	#howManyShapes = 0
+	returnShape = None
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	print getShape;
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		#howManyShapes = len(getShape[0])
+		returnShape = getShape[0]
+	return returnShape#(returnShape, howManyShapes)
+	
+sel = maya.cmds.ls(selection=True)
+
+for i in sel:
+    shape = getShapeNodes(i)
+    print shape

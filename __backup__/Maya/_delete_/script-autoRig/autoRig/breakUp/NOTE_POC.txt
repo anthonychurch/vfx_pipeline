@@ -1,0 +1,5 @@
+Notes on Point On Curve Info
+When using POC to constrain a node to a curve, do not freeze transform the nodes positional information
+
+
+mid_6_0_ctrl.crvPos = 0.97 + mid_6_0_ctrl.offset;

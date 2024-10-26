@@ -1,0 +1,934 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,group):
+	newArray = []
+	#brake = False
+	endJoint = jointArray[len(jointArray)-1]
+	print('endJoint = ' + str(endJoint))
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicate, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicate, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		print('duplicate = ' + str(duplicate))
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		if(child != None):
+			if(len(child) == 1):
+				duplicate = child[0]
+			else:
+				print('child = ' + str(child))
+				print(str(j) + ' has a branch of Multiple Joints')
+				for c in child:
+					print('c = ' + str(c))
+					gc = maya.cmds.listRelatives(c,c=True,ad=True,f=True)
+					print('gc = ' + str(gc))
+					if(gc != None):
+						for g in gc:
+							prefixToIgnore = g.rfind('|')
+							test = g[prefixToIgnore+1:len(g)]
+							print('test = ' + str(test))
+							if(test == endJoint):
+								print('c has the end joint = ' + str(c))
+								duplicate = c
+								print('duplicate = ' + str(duplicate))
+					else:	
+						print('deleting ' + str(c))
+						maya.cmds.delete(c)
+
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],group[len(group)-1])
+	return newArray
+							
+def createIKhandles2(prefix,limbType,type,startJoint,endJoint,pvCtrl,curve,grp):
+	ikh = prefix + limbType + '_ikHandle'
+	if(type != 'ikSplineSolver'):
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+		print('h = ' + str(h))
+		if(type == 'ikRPsolver'):
+			maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	else:
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type, ccv = False, c = curve)
+		print('h = ' + str(h))
+		maya.cmds.parent(h[0],grp)
+				
+	return h
+
+def getTweenJoints(jointArray,numberTweenJoints):
+	increment = 0
+	newArray = []
+	#print('increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('newArray = ' + str(newArray) )
+
+	return newArray
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+#### END   - Common Methods ###############################################################################################################################################################################
+
+#### START - Insert Extra Joints ##########################################################################################################################################################################
+def insertExtraJoints01(jointArray,howManyJointsInserted,sidePrefix,jointAimAxis,jointOrientAxis):
+	returnArray = []
+	increment = 1
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		jointsInserted = []
+	
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i];
+		translate =  maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted +1))
+		createJoint = maya.cmds.joint(n=(jointArray[i] + '_INIT'))
+		#print('createJoint = ' + str(createJoint))
+		jointINIT = createJoint
+	
+		parentContrain = maya.cmds.parentConstraint(currentJoint, createJoint)
+		maya.cmds.delete(parentContrain[0])
+
+		#string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+		#delete $aimConstrain[0];
+		print('jointOrientAxis = ' + str(jointOrientAxis))
+		maya.cmds.setAttr(jointINIT + '.jointOrient' + jointOrientAxis,0)
+		for j in range(1,howManyJointsInserted+1,1):
+		
+			createJoint = maya.cmds.joint(n=(jointArray[i] + '_' + str(increment)))
+			returnArray.append(createJoint)
+			print('createJoint = ' + str(createJoint))
+			#jointsInserted[j - 1] = createJoint
+			jointsInserted.append(createJoint)
+			print('jointsInserted = ' + str(jointsInserted))
+						
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			increment = increment + 1
+
+	
+		print (jointsInserted[howManyJointsInserted-1])
+		print ('jointsInserted[0] = ' + str(jointsInserted[0]))
+		print ('currentJoint = ' + str(currentJoint))
+		maya.cmds.parent(jointsInserted[0],currentJoint)
+	
+		maya.cmds.parent(nextJoint,jointsInserted[len(jointsInserted)-1])
+	
+		maya.cmds.delete(jointINIT)
+		increment = 1
+
+	return returnArray
+#### END  - Insert Extra Joints ##########################################################################################################################################################################	
+#### START - SplineIK ####################################################################################################################################################################################
+def insertHowManySplineIKJoints(howManyTweenJoints,howManySplineIKControlJoints,tweenSplineJoints):
+	if(howManySplineIKControlJoints == 0):
+		howManySplineIKControlJoints = 1
+	cj =  (howManyTweenJoints + 1) * howManySplineIKControlJoints
+	tsj = (cj+1) * tweenSplineJoints
+	print('tsj = ' + str(tsj))
+	print('tweenSplineJoints = ' + str(tweenSplineJoints))
+	multiplier = int(tweenSplineJoints) + 1
+	print('multiplier = ' + str(multiplier))
+	return (tsj,multiplier)
+
+def insertExtraJoints02(jointArray,howManyJointsInserted,multiplier,sidePrefix,jointAimAxis,jointOrientAxis):
+	returnArray = []
+	print('howManyJointsInserted = ' + str(howManyJointsInserted))
+	
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		jointsInserted = []
+		increment = 1
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i];
+		translate =  maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted))
+		createJoint = maya.cmds.joint(n=(jointArray[i] + '_INIT'))
+		#print('createJoint = ' + str(createJoint))
+		jointINIT = createJoint
+	
+		parentContrain = maya.cmds.parentConstraint(currentJoint, createJoint)
+		maya.cmds.delete(parentContrain[0])
+
+		#string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+		#delete $aimConstrain[0];
+		
+		maya.cmds.setAttr(jointINIT + '.jointOrient' + jointOrientAxis,0)
+		subInc = 1
+		for j in range(1,howManyJointsInserted,1):
+			
+			print('j = ' + str(j))
+			if(subInc == multiplier-1):
+				subInc = 'ctrl'
+
+			createJoint = maya.cmds.joint(n=(jointArray[i] + '_' + str(increment) + '_' + str(subInc)))
+			returnArray.append(createJoint)
+			print('createJoint = ' + str(createJoint))
+			#jointsInserted[j - 1] = createJoint
+			jointsInserted.append(createJoint)
+			print('jointsInserted = ' + str(jointsInserted))
+						
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			if(subInc != 'ctrl'):
+				subInc = subInc + 1
+			else:
+				subInc = 1 
+				increment = increment + 1
+						
+		print (jointsInserted)
+		maya.cmds.parent(jointsInserted[0],currentJoint)
+	
+		maya.cmds.parent(nextJoint,jointsInserted[len(jointsInserted)-1])
+	
+		maya.cmds.delete(jointINIT)
+		increment = 1
+
+	return returnArray
+
+def createArrowCtrl(name,colour,axis):
+	maya.cmds.curve(p=[(0,0,-14),(0,0,-14),(-4,0,-10),(-4,0,-10),(-4,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-4),(-10,0,-4),(-10,0,-4),(-14,0,0),(-14,0,0),(-14,0,0),(-10,0,4),(-10,0,4),(-10,0,4),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(-4,0,10),(-4,0,10),(-4,0,10),(0,0,14),(0,0,14),(0,0,14),(4,0,10),(4,0,10),(4,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,4),(10,0,4),(10,0,4),(14,0,0),(14,0,0),(14,0,0),(10,0,-4),(10,0,-4),(10,0,-4),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10),(4,0,-10),(4,0,-10),(4,0,-10),(0,0,-14),(0,0,-14)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,13,13,14,14,14,15,15,15,16,16,16,17,17,17,18,18,18,19,19,19,20,20,20,21,21,21,22,22,22,23,23,23,24,24,24])
+	ctrl = maya.cmds.ls(selection=True)
+	print('ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	print('shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(name) + '.rotate' + str(axis), 90)
+	maya.cmds.makeIdentity( str(name), apply=True, t=1, r=1, s=1 )
+	return name
+		
+def createCurve(objArray,name,grp):
+	howManyObjs = len(objArray)
+	print ('howManyObjs = ' + str(howManyObjs))
+	points =''
+	pos1 = (0,0,0)
+	for i in range(0,howManyObjs,1):
+		print ('i = ' + str(i))
+		if(i != 1):
+			pos = getWStransform(objArray[i])
+			p = '(' + str(pos[0]) + ',' + str(pos[1]) + ',' + str(pos[2]) + ')'
+			print('p = ' + str(p))
+			if(i != howManyObjs-1):
+				p = p + ', '
+		else:
+			pos1 = getWStransform(objArray[i])
+			print('pos1 = ' + str(pos1))
+		points = points + p
+		print('points = ' + str(points))
+
+	eval('maya.cmds.curve(p=[' + points + '])')
+	curve = maya.cmds.ls(selection=True)
+	print ('curve = ' + str(curve))
+	rename = maya.cmds.rename(curve,name)
+	maya.cmds.parent(rename,grp)
+	setWStransform(str(rename) + '.cv[1]',pos1)
+
+	#returns name of curve and number of CV's
+	return (rename,howManyObjs-1)
+
+def clusterCurve(curve,nme,grp):
+	maya.cmds.select(curve + '.cv[*]')
+	cvs = maya.cmds.ls(selection=True)
+	print ('cvs = ' + str(cvs))
+	print('cvs length = ' + str(len(cvs)))
+	rf = cvs[0].rfind(':')
+	print ('rf = ' + str(rf))
+	lenCVs = len(cvs[0])
+	print ('lenCVs = ' + str(lenCVs))
+	number = int(cvs[0][(rf+1):(lenCVs-1)])
+	print ('number = ' + str(number))
+	
+	listOfClusters = []
+	for i in range(0,number+1,1):
+		c = maya.cmds.cluster(str(curve) + '.cv[' + str(i) + ']')
+		nn = maya.cmds.rename(c[1],nme+str(i+1))
+		listOfClusters.append(nn)
+		if( grp != None ):
+			maya.cmds.parent(nn,grp)
+
+	print ('listOfClusters = ' + str(listOfClusters))
+	return listOfClusters
+
+def setUpSplineIKstretch(jointArray,prefix,crve,aimAxis):
+	splineNormaliseNode = prefix + 'spline_normalize_multiplyDivide'
+	splineMultiplyNode = prefix + 'spline_multiplier_multiplyDivide'
+	curveInfo = prefix + 'spline_curveInfo1'
+
+	howManyJoints = len(jointArray)
+
+	howManyNodes = int(math.ceil(len(jointArray) / 3))
+	#START////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+	#CREATE CURVE INFO AND MULTIPLYDIVIDE NODES
+	curveInfoNode = maya.cmds.arclen(crve, ch=True)
+	multiplierNode = maya.cmds.shadingNode('multiplyDivide',n=splineNormaliseNode + '1',au=True)
+
+	splineNormalise = multiplierNode #ENSURE THAT THERE CONTINUITY THROUGH OUT THE SCRIPT
+
+	#CONNECT ARCLENGTH TO INPUT1X 
+	socket = multiplierNode + '.input1X'
+	connector = curveInfoNode + '.arcLength'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#SET INPUT2X TO ARCLENGTH VALUE AND SET MULTIPLEDIVED NODES OPERATION TO DIVIDE
+	socketAttribute = ".input2X";
+
+	maya.cmds.setAttr(multiplierNode + '.operation',2)
+	arcLength = maya.cmds.getAttr(connector)
+
+	maya.cmds.setAttr(multiplierNode + '.input2X', arcLength)
+
+	maya.cmds.rename(curveInfoNode, curveInfo)
+	#print('splineMultiplyNode = ' + str(splineMultiplyNode))
+	#END/////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+
+	#START///////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+    	splineMultiply = []
+    	#CREATE MULTIPLYDIVIDE NODES 
+    	for i in range(0,howManyNodes,1):
+		temp = maya.cmds.shadingNode('multiplyDivide', n=splineMultiplyNode + str(1), au=True)
+		splineMultiply.append(temp)
+		
+	print ('splineMultiply = ' + str(splineMultiply))
+
+	connectorAttribute1 = '.outputX' #change this variable
+	socketAttribute1 = '.input' #change this variable
+	connector1 = splineNormalise + connectorAttribute1
+	connectorAttribute2 = '.output'
+	
+	whichJoint = 1
+
+	whichAxis = [' ', 'X', 'Y', 'Z']
+	brake = 0
+
+	print ('jointArray 1 = ' + str(jointArray))
+
+	#CONNECT THE NORMALISE NODE TO THE MULTIPLYDIVIDE NODES, COPY SPINE JOINT TRANSLATEX TO MULTIPLYDIVIDE NODES INPUT 1XYZ ATTRIBUTES AND 
+	#CONNECT MULTIPLYDIVIDE NODES OUTPUT XYZ TO SPINE JOINT TRANSLATEX
+	for i in range(0, howManyNodes, 1):
+		
+		#multiply = i + 1
+	
+		for j in range(1, 4, 1):
+			if(brake == 0):
+				
+				#socket1 = splineMultiply + str(multiply) + (socketAttribute1 + '2' + whichAxis[j])
+				socket1 = splineMultiply[i] + (socketAttribute1 + '2' + whichAxis[j])
+				maya.cmds.connectAttr(connector1, socket1, force=True)
+		
+				getAttribute = maya.cmds.getAttr(jointArray[whichJoint] + '.t' + aimAxis)
+				#setAttr = maya.cmds.setAttr(splineMultiplyNode + str(multiply) + (socketAttribute1 + '1' + whichAxis[j]), getAttr)
+				setAttr = maya.cmds.setAttr( splineMultiply[i] + (socketAttribute1 + '1' + whichAxis[j]), getAttribute)
+		
+				connector2 = splineMultiply[i] + (connectorAttribute2 + whichAxis[j])
+				print ('connector2 = ' + str(connector2))
+				socket2 = (jointArray[whichJoint] + '.t' + aimAxis)
+				print ('socket2 = ' + str(socket2))
+				maya.cmds.connectAttr(connector2, socket2, force=True)
+
+				whichJoint = whichJoint + 1
+	
+				print ('whichJoint = ' + str(whichJoint))
+				print ('howManyJoints = ' + str(howManyJoints))
+
+				#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+				if(whichJoint == howManyJoints):
+					brake = 1
+
+	#END/////////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+def setConstraint(contraintType, source, destination, name):
+	if(contraintType == 'parent'):
+		constraint = maya.cmds.parentConstraint(ik,splineIK, mo=True, name = name)
+	else:
+		constraint = maya.cmds.pointConstraint(ik,splineIK, mo=True, name = name)
+	return constraint
+		 
+def setUpSplineIKControls(clustered, ikCtrl, fkCtrl, splineIkCtrl, name):
+	if(clustered == True):
+		#point constrain the cluster to the nearest control joint
+		if(ikCtrl != None):
+			ik = setConstraint('point', ikCtrl, splineIkCtrl, name)
+			if(fkCtrl != None):
+				fk = setConstraint('point', fkCtrl, splineIkCtrl, name)
+		else:
+			fk = setConstraint('point', fkCtrl, splineIkCtrl, name)
+	else:
+		if(ikCtrl != None):
+			ik = setConstraint('parent', ikCtrl, splineIkCtrl, name)
+			if(fkCtrl != None):
+				fk = setConstraint('parent', fkCtrl, splineIkCtrl, name)
+		else:
+			fk = setConstraint('parent', fkCtrl, splineIkCtrl, name)
+	return(ik,fk)
+
+def createSplineIKControls(jointsArray, masterCtrl):
+	grpArray = []
+	ctrlArray = []
+	#create the controls
+	for i in range(0, len(jointsArray), 1):
+		#select only the control joints
+		index = i * divide
+		#print ('index = ' + index + ';   ')
+	
+		copy = maya.cmds.duplicate(masterCtrl, n=(jointsArra[index] + '_CTRL'))
+		group1 = maya.cmds.group(copy[0], n=(jointsArra[index] + '_AV'))
+		group2 = maya.cmds.group(group1, n=(jointsArra[index] + '_NULL'))
+		group3 = maya.cmds.group(group2, n=(jointsArra[index] + '_GRP'))
+		grpArray.append(group3)
+		ctrlArray.append(copy[0])
+			
+		parentConstraint = maya.cmds.pointConstraint( jointsArra[index], group3)
+		maya.cmds.delete(parentConstraint[0])
+		
+		maya.cmds.select(copy[0])
+		maya.cmds.makeIdentity( apply=True, translate=True, rotate=True, scale=True, normal=False)
+
+	return(ctrlArray,grpArray)
+
+
+def splineIKrotation(jointsArray):
+	#create multiply and blend nodes 
+	IKrotateMultiply = sidePrefix + 'IK_' + limbTypeName + 'rotator_multiplyDivide'
+	FKrotateMultiply = sidePrefix + 'FK_' + limbTypeName + 'rotator_multiplyDivide'
+	IKFKrotateBlend =  sidePrefix + 'IKFK_' + limbTypeName + 'blend'
+
+	IKrotateArry = []
+	FKrotateArry = []
+	IKFKrotateArry = []
+
+	whichAxis = ['X', 'Y', 'Z']
+	whichColour = ['R', 'B', 'G']
+	fraction = 1 /(len(splineIKCTRLjoints)-1)
+	print('fraction = ' + str(fraction))
+
+	for i in range(0, len(jointsArray), 1):
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=IKrotateMultiply + '1', au=True)
+		IKrotateArry.append(multiplierNode)
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=FKrotateMultiply + '1', au=True)
+		FKrotateArry.append(multiplierNode)
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=IKFKrotateBlend + '1', au=True)
+		IKFKrotateArry.append(multiplierNode)
+
+		#Connect Multiple nodes to blend
+		offset = i + 1
+
+		brake = 0
+
+		for j in range (0, 3, 1):
+
+			if(brake == 0):
+				IKconnector = IKrotateArry[i] + '.output' + whichAxis[j]
+				FKconnector = FKrotateArry[i] + '.output' + whichAxis[j]
+				IKsocket = IKFKrotateArry[i] + '.color1' + whichColour[j]
+				FKsocket = IKFKrotateArry[i] + '.color2' + whichColour[j]
+
+				maya.cmds.connectAttr(IKconnector, IKsocket, force=True)
+				maya.cmds.connectAttr(FKconnector, FKsocket, force=True)
+
+				#connect IK wrist control to Multiply nodes
+				IKsocket = IKrotateArry[i] + '.input1' + whichAxis[j]
+				FKsocket = FKrotateArry[i] + '.input1' + whichAxis[j]
+
+				IKconnector = IKwristCtrl + rotationAxis
+				FKconnector = FKwristCtrl + rotationAxis
+
+				smoothStep = maya.cmds.smoothstep( 0, 1, increment)
+
+				maya.cmds.setAttr(IKrotateArry[i] + '.input2' + whichAxis[j], smoothStep)
+				maya.cmds.setAttr(FKrotateArry[i] + '.input2' + whichAxis[j], smoothStep)
+
+				maya.cmds.connectAttr(IKconnector, IKsocket, force=True)
+				maya.cmds.connectAttr(FKconnector, FKsocket, force=True)
+
+				#increment up the suffix to conect to 'L_armTweak_AV'
+				connector = IKFKrotateArry[i] + '.output' + whichColour[j]
+				socket = (jointsArray[i] + '_AV') + rotationAxis
+				print(str(jointsArray[i]) + '_AV;      ')
+
+				maya.cmds.setAttr(connector, socket)
+
+				if(count > howManyJoints):
+					brake = 1
+
+def masterSetUpSplineIK(selection,sidePrefix,upAxis,howManyTweenJoints,howManyKeyJoints,jointType,limbType,limbTypeName,howwManySplineTweenJoints,jointOrientAxis,jointAimAxis,createSplineIK,masterSplineIKCTRL):
+
+	prefix = sidePrefix + jointType
+
+	groupSkeleton = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+	#groupDim = ['char_GRP','DO_NOT_ALTER_GRP','dimension_GRP']
+	groupCurves = ['char_GRP','DO_NOT_ALTER_GRP','curves_GRP']
+	groupHandles = ['char_GRP','DO_NOT_ALTER_GRP','handles_GRP',sidePrefix + jointType + limbTypeName + 'cluster_GRP']
+	skeletonCtrlGrp = groupSkeleton[3]
+	startJoint = selection[0]
+	midJoint = selection[1]
+	endJoint = selection[2]
+	toeJoint = None
+
+	if(len(selection) > 2):
+		toeJoint = selection[3]
+		print('toeJoint = ' + str(toeJoint))
+
+	maya.cmds.select(selection[0])
+	maya.cmds.select(hierarchy = True)
+	selHi = maya.cmds.ls(selection = True)
+	selectedJoints = filterSelection2(selHi,endJoint,1)
+	print('selectedJoints = ' + str(selectedJoints))
+	
+	maya.cmds.select(clear=True)
+	setUpGrp(groupSkeleton)
+	splineIKCTRLjoints = selectedJoints
+	print('splineIKCTRLjoints = ' + str(splineIKCTRLjoints))
+
+	if(createSplineIK == True):
+		ej = endJoint
+		print('ej = ' + str(ej))
+		#splineIKjointsFiltered = filterSelection2(splineIKjoints,ej,1)
+		splineIKjointsFiltered = selectedJoints
+		print('splineIKjointsFiltered = ' + str(splineIKjointsFiltered))
+		print('howwManySplineTweenJoints = ' + str(howwManySplineTweenJoints))
+		insertSplineIkJoints = insertHowManySplineIKJoints(howManyTweenJoints,howManyKeyJoints,howwManySplineTweenJoints)
+		jointsInserted = insertExtraJoints02(splineIKjointsFiltered,insertSplineIkJoints[0],insertSplineIkJoints[1],sidePrefix,jointAimAxis,jointOrientAxis)
+		print('jointsInserted = ' + str(jointsInserted))
+		maya.cmds.select(clear=True)
+		#maya.cmds.select(splineIKjoints[0])
+		maya.cmds.select(startJoint)
+		maya.cmds.select(hierarchy = True)
+		sel = maya.cmds.ls(selection = True)
+		getSplineIKJoints = maya.cmds.ls(selection = True)
+		#getSplineIKJoints = filterSelection2(sel,ej,1)
+		print('getSplineIKJoints = ' + str(getSplineIKJoints))
+		getControlSplineIKjoints = filterSelection2(getSplineIKJoints,ej,insertSplineIkJoints[1]-1)
+		print('getControlSplineIKjoints = ' + str(getControlSplineIKjoints))
+		setUpGrp(groupHandles)
+		setUpGrp(groupCurves)
+		
+		print ('prefix + jointType + curve = ' + str(prefix + jointType + 'curve'))
+		curve = createCurve(getControlSplineIKjoints, prefix + limbTypeName + 'curve',groupCurves[len(groupCurves)-1])
+		print ('curve = ' + str(curve))
+		clusters = clusterCurve(curve[0],prefix + jointType + 'CLUSTER_',groupHandles[len(groupHandles)-1])
+
+		#setUpSplineIKstretch(getSplineIKJoints,prefix,curve[0],jointAimAxis)
+		#splineIK = createIKhandles2(prefix,limbType,'ikSplineSolver',getSplineIKJoints[0],getSplineIKJoints[len(getSplineIKJoints)-1],None,curve[0],groupHandles[2])
+
+	else:
+		print('no extra spline IK handle joints required')
+#### END  - SplineIK ####################################################################################################################################################################################
+
+def editTxtGrpButton(name,type):
+	item = maya.cmds.ls(selection=True)
+	if(len(item) == 1):
+		if(type == 'textFieldButtonGrp'):
+			maya.cmds.textFieldButtonGrp( name, e=True, text=str(item[0]))
+	else:
+		print('ERROR :: Select one item only, current items selected : ' + str(item))
+
+def togglesystems():
+	print('togglesystems()')
+	ikState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', q=True, value=True)
+	print('ikState = ' + str(ikState))
+	fkState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', q=True, value=True)
+	print('fkState = ' + str(fkState))
+	splineState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', q=True, value=True)
+	print('splineState = ' + str(splineState))
+
+	if(fkState == False):
+		maya.cmds.columnLayout('FK',  e=True, en=False)
+		if(splineState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', e=True, ed=True)
+		maya.cmds.columnLayout('FK',  e=True, en=True)
+	if(splineState == False):
+		maya.cmds.columnLayout('SplineIK',  e=True, en=False)
+		if(ikState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', e=True, ed=True)
+		maya.cmds.columnLayout('SplineIK',  e=True, en=True)
+	if(ikState == False):
+		maya.cmds.columnLayout('IK',  e=True, en=False)
+		if(fkState == False):
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=False, value=True)
+		else:
+			maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=True)
+	else:
+		maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', e=True, ed=True)
+		maya.cmds.columnLayout('IK',  e=True, en=True)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+def whichType(value):
+	#'bipedLeg', 'Quadraped', 'misc'
+	type = 'bipedLeg'
+	if(value == 2):
+		type = 'Quadraped'
+	elif(value == 3):
+		type = 'misc'
+	return type
+
+#Main function that is executed when the rebuild button is clicked from def rebuildCurveWindow(windowName,obj):
+#It queries all the GUI inputs then assigns them to the appropriate argument in def rebuildCurve(obj,amplitudeX,amplitudeY,amplitudeZ,weightX,weightY,weightZ,overlapX,overlapY,overlapZ,count,frequency,spans,degrees,tolerance,affectStartCV,affectEndCV):
+def buildIKFKSystem(windowName):
+
+	#0=Right, 1=Left, 2=Centre, 3=Misc
+	IKcolour = [4,7,24,5]
+	FKColour = [13,14,17,11]
+	splineIKColour = [23,30,22,28]
+
+	print('buildIKFKsystem()')
+	ikState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckIK', q=True, value=True)
+	print('ikState = ' + str(ikState))
+	fkState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckFK', q=True, value=True)
+	print('fkState = ' + str(fkState))
+	splineIKState = maya.cmds.checkBox(rebuildCurveWindowName + '_chckSPL', q=True, value=True)
+	print('splineIKState = ' + str(splineIKState))
+	
+	sidePrefix = maya.cmds.textFieldGrp( windowName + '_sidePrefix', q=True, text=True )
+	sj = maya.cmds.textFieldButtonGrp( windowName + '_startJoint', q=True, text=True )
+	mj = maya.cmds.textFieldButtonGrp( windowName + '_midJoint', q=True, text=True )
+	ej = maya.cmds.textFieldButtonGrp( windowName + '_endJoint', q=True, text=True )
+	tj = maya.cmds.textFieldButtonGrp( windowName + '_toeJoint', q=True, text=True )
+	sel = [sj,mj,ej,tj]
+	howManyJointsInserted = maya.cmds.intFieldGrp( windowName + '_howwManyJointstoInsert', q=True, value1=True )
+	print('howManyJointsInserted = ' + str(howManyJointsInserted))
+	JUA = maya.cmds.radioButtonGrp( windowName + '_upAxis', q=True, sl=True )
+	upAxis = whichAxis(JUA)
+	print('upAxis = ' + str(upAxis))
+	JAA = maya.cmds.radioButtonGrp( windowName + '_jointAimAxis', q=True, sl=True )
+	jointAimAxis =  whichAxis(JAA)
+	print('jointAimAxis = ' + str(jointAimAxis))
+	JOA = maya.cmds.radioButtonGrp( windowName + '_jointOrientAxis', q=True, sl=True )
+	jointOrientAxis = whichAxis(JOA)
+	print('jointOrientAxis[1] = ' + str(jointOrientAxis[1]))
+	selectedJoints = [sj,mj,ej]
+	print('selectedJoints = ' + str(selectedJoints))
+	jointsInserted = insertExtraJoints01(selectedJoints,howManyJointsInserted,sidePrefix,jointAimAxis[0],jointOrientAxis[1])
+
+	limbTypeName = maya.cmds.textFieldGrp( windowName + '_limbTypeName', q = True, text=True )	
+	lt = maya.cmds.radioButtonGrp( windowName + '_limbType',  q=True, sl=True )
+	limbType =  whichType(lt)
+	if(splineIKState != False):
+		masterSplineCTRL = ''
+
+		spl = maya.cmds.textFieldGrp( windowName + '_SPL', q=True, text=True )
+		print('spl = ' + str(spl))
+		useCurve = maya.cmds.checkBoxGrp( windowName + '_createSplineIK', q=True, value1=True )
+		print('useCurve = ' + str(useCurve))
+		masterSplineCTRL = maya.cmds.textFieldButtonGrp( windowName + '_splineIkmasterCtrl', q=True, text=True )
+		print('masterSplineCTRL = ' + str(masterSplineCTRL))
+		howManyKeyJoints = maya.cmds.intFieldGrp( windowName + '_howwManySplineControlJoints', numberOfFields=1, q=True, value1=True )
+		print('howManyKeyJoints = ' + str(howManyKeyJoints))
+		howManyTweenJoints = maya.cmds.intFieldGrp( windowName + '_howwManySplineTweenJoints', q=True, value1=True )
+		print('howManyTweenJoints = ' + str(howManyTweenJoints))
+
+		if(masterSplineCTRL == ''):
+			masterSplineCTRL = createArrowCtrl('splineIK_Master_CTRL',splineIKColour[2],'X')
+			#print('masterSplineCTRL = ' + str(masterSplineCTRL))
+		else:
+			masterSplineCTRL = maya.cmds.textFieldButtonGrp( windowName + '_splineIkmasterCtrl', q=True, text=True )
+			#print('masterSplineCTRL = ' + str(masterSplineCTRL))
+
+        print('masterSplineCTRL = ' + str(masterSplineCTRL))
+        masterSetUpSplineIK(sel,sidePrefix,upAxis[0],howManyJointsInserted,howManyKeyJoints,spl,limbType,limbTypeName,howManyTweenJoints,jointOrientAxis[1],jointAimAxis[0],useCurve,masterSplineCTRL)
+
+
+
+
+
+
+def buildIkFkWindow(windowName):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= 'Build IK FK SplineIK', s=True, iconName='Short Name', widthHeight=(500, 450))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.checkBox(windowName + '_chckIK', label='IK', value=True, cc='togglesystems()')
+	maya.cmds.checkBox(windowName + '_chckFK', label='FK', value=True, cc='togglesystems()')
+	maya.cmds.checkBox(windowName + '_chckSPL', label='Spline IK', value=True, cc='togglesystems()')
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	form = maya.cmds.formLayout(windowName + '_form1')
+	tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	maya.cmds.columnLayout('Global')
+	maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.textFieldGrp( windowName + '_sidePrefix', label='Side Prefix:', text='L_' )
+	sp = maya.cmds.textFieldGrp( windowName + '_sidePrefix', q=True, text=True )
+	maya.cmds.textFieldGrp( windowName + '_limbTypeName', label='Limb Type Name:', text='leg_' )
+	ltn = maya.cmds.textFieldGrp( windowName + '_limbTypeName', q = True, text=True )
+	maya.cmds.radioButtonGrp( windowName + '_limbType', label='Type Of Limb:', labelArray3=['bipedLeg', 'Quadraped', 'misc'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_ctrlAimAxis', label='Control Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_upAxis', label='Joint Up Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	maya.cmds.radioButtonGrp( windowName + '_jointAimAxis', label='Joint Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	maya.cmds.radioButtonGrp( windowName + '_jointOrientAxis', label='Joint Orient Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=3 )
+	maya.cmds.intFieldGrp( windowName + '_howwManyJointstoInsert', numberOfFields=1, label='Number of Joints to insert:', value1=2, en=True )
+	getstartJoint = sp + 'hip'
+	getMidJoint = sp + 'knee'
+	getEndJoint = sp + 'ankle'
+	getToeJoint = sp + 'toe'
+	msg = windowName + '_startJoint'
+	run = 'runScript("' + windowName + '_startJoint' + '")'
+	maya.cmds.textFieldButtonGrp( windowName + '_startJoint', label='Get Start Joint:', text=getstartJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_startJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_midJoint', label='Get Mid Joint:', text=getMidJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_midJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_endJoint', label='Get End Control:', text=getEndJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_endJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_toeJoint', label='Get Toe Joint:', text=getToeJoint, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_toeJoint' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout('IK')
+	maya.cmds.scrollLayout( windowName + '_scrollIK', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_ik1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_IK', label='Joint Type:', text='IK_', en=True) 
+	ik = maya.cmds.textFieldGrp( windowName + '_IK', q=True, text=True ) 
+	getIkMainCtrl = sp + ik + 'foot_CTRL'
+	getIkStartCtrl = sp + ik + 'hip_CTRL'
+	getIkMidnCtrl = sp + ik + 'knee_CTRL'
+	getIkEndCtrl = sp + ik + 'toe_CTRL'
+	getIkpvCtrl = sp + ik + ltn + 'poleVector_tracking_LOC'
+
+	maya.cmds.textFieldButtonGrp( windowName + '_IKmainCtrl', label='Get IK Main Control:', text=getIkMainCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKmainCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKstartCTRL', label='Get IK Start Control:', text=getIkStartCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKstartCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKmidCTRL', label='Get IK Mid Control:', text=getIkMidnCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKmidCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_IKendCtrl', label='Get IK End Control:', text=getIkEndCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_IKendCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_ik1b', rs=5)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout('FK')
+	maya.cmds.scrollLayout( windowName + '_scrollFK', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_fk1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_FK', label='Joint Type:', text='FK_', en=True) 
+	fk = maya.cmds.textFieldGrp( windowName + '_FK', q=True, text=True ) 
+	getFkMainCtrl = sp + fk + 'foot_CTRL'
+	getFkStartCtrl = sp + fk + 'hip_CTRL'
+	getFkMidnCtrl = sp + fk + 'knee_CTRL'
+	getFkEndCtrl = sp + fk + 'toe_CTRL'
+	getFkpvCtrl = sp + fk + ltn + 'poleVector_tracking_LOC'
+	maya.cmds.textFieldButtonGrp( windowName + '_FKmainCtrl', label='Get FK Main Control:', text=getFkMainCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKmainCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKstartCTRL', label='Get FK Start Control:', text=getFkStartCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKstartCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKmidCTRL', label='Get FK Mid Control:', text=getFkMidnCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKmidCTRL' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKendCtrl', label='Get FK End Control:', text=getFkEndCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKendCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.textFieldButtonGrp( windowName + '_FKpvCtrl', label='Get FK Pole Vector Control:', text=getFkpvCtrl, buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_FKpvCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_fk1b', rs=6)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+
+	maya.cmds.columnLayout('SplineIK')
+	maya.cmds.scrollLayout( windowName + '_scrollSPLINE', width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_column1a', rs=4)
+	maya.cmds.textFieldGrp( windowName + '_SPL', label='Joint Type:', text='SPL_', en=True) 
+	spl = maya.cmds.textFieldGrp( windowName + '_SPL', q=True, text=True )
+	maya.cmds.checkBoxGrp( windowName + '_createSplineIK', numberOfCheckBoxes=1, label='Use Curve to Create IK:', value1=True )
+	maya.cmds.textFieldButtonGrp( windowName + '_splineIkmasterCtrl', label='Get Master Control:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButton("' + windowName + '_splineIkmasterCtrl' + '","textFieldButtonGrp")' )
+	maya.cmds.intFieldGrp( windowName + '_howwManySplineControlJoints', numberOfFields=1, label='Number of Control Joints:', value1=0, en=False )
+	maya.cmds.intFieldGrp( windowName + '_howwManySplineTweenJoints', numberOfFields=1, label='Number of tween Joints:', value1=3, en=True )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_column1b')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.button(label='?')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Create IK/FK/SplineIK Systems', c='buildIKFKSystem("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+
+rebuildCurveWindowName = 'buildIKFKsystem'
+deleteWindow(rebuildCurveWindowName)
+buildIkFkWindow(rebuildCurveWindowName)

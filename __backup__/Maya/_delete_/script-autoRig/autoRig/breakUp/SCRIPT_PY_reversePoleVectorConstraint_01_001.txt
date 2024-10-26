@@ -1,0 +1,40 @@
+import maya.cmds
+import random
+import math
+
+#int $boo = getAttr("L_IK_leg_ikHandle_poleVectorConstraint1.constraintTranslateX");
+#print $boo;
+
+def reversePolveVector(prefix,ikHandle,pv):
+	axis = ['x','y','z']
+	capitalAxis = ['X','Y','Z']
+	
+	multiply = maya.cmds.shadingNode('multiplyDivide',n=prefix + 'reverePV_multiplyDivide' + '1',au=True)
+	for a in range(0,len(axis),1):
+		source =  pv + '.' + 'constraintTranslate' + capitalAxis[a]
+		desitination = multiply + '.' + 'input1' + capitalAxis[a]
+		maya.cmds.connectAttr(source, desitination, force=True)
+		maya.cmds.setAttr(multiply + '.' + 'input2' + capitalAxis[a],-1)
+
+		source =  multiply + '.' + 'output' + capitalAxis[a]
+		desitination = ikHandle + '.' + 'poleVector' + capitalAxis[a]
+		maya.cmds.connectAttr(source, desitination, force=True)
+
+	return multiply
+
+sidePrefix = 'L_'
+jointType = 'IK_'
+limbTypeName = 'leg_'
+prefix = sidePrefix + jointType
+
+###################################################################################
+#     SELECT:	
+#	1. MAIN IKHNADLE,
+#	2. POLE VECTOR CONSTRAINT ATTACHED TO MAIN CONTROL,
+###################################################################################
+
+sel = maya.cmds.ls(selection=True)
+mainIkHandle = sel[0]
+pvConstraint = sel[1]
+
+pvReverseNode = reversePolveVector(prefix + limbTypeName,mainIkHandle,pvConstraint)

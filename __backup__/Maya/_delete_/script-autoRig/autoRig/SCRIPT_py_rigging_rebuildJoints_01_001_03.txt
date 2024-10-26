@@ -1,0 +1,134 @@
+import maya.cmds
+import random
+import math
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def incrementPos(increment,value,axis):
+	vector = (0,0,0)
+	value = value + increment
+	if(axis == 'x'):
+		vector = (value,0,0)
+	elif(axis == 'y'):
+		vector = (0,value,0)
+	else:
+		vector = (0,0,value)
+	return vector
+
+def setJointOriention(obj):
+	rx = maya.cmds.getAttr(str(obj) + '.rotateX')
+	print('rx = ' + str(rx))
+	maya.cmds.setAttr(str(obj) + '.jointOrientX', rx)
+	ry = maya.cmds.getAttr(str(obj) + '.rotateY')
+	print('ry = ' + str(ry))
+	maya.cmds.setAttr(str(obj) + '.jointOrientY', ry)
+	rz = maya.cmds.getAttr(str(obj) + '.rotateZ')
+	print('rz = ' + str(rz))
+	maya.cmds.setAttr(str(obj) + '.jointOrientZ', rz)
+	maya.cmds.setAttr(str(obj) + '.rotateX', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateY', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateZ', 0)
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getDistance2Vectors(pointA,pointB):
+	sp = getWStransform(pointA)
+	ep = getWStransform(pointB)
+	distance = math.sqrt(  math.pow(sp[0]-ep[0],2) + math.pow(sp[1]-ep[1],2) + math.pow(sp[2]-ep[2],2)  )
+	return distance
+
+def filterSelection(array,breakerObj):
+	newArray = []
+	brake = False
+	for n in array:
+		if(brake == False):
+			newArray.append(n)
+			if(n == breakerObj):
+				print n
+				brake = True
+	return newArray
+			
+
+def insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints):
+	maya.cmds.select( clear=True )
+	oldMasterJoints = []
+	howManySelJoints = len(selectedJoints)
+	print('selectedJoints = ' + str(selectedJoints))
+	print('howManySelJoints = ' + str(howManySelJoints))
+	for i in range(0,howManySelJoints-1,1):
+		print('i = ' + str(i))
+		masterJoint = selectedJoints[i]
+		print('masterJoint = ' + str(masterJoint))
+		
+		t = maya.cmds.rename(selectedJoints[i],'temp_' + masterJoint)
+		oldMasterJoints.append(t)
+		print('oldMasterJoints = ' + str(oldMasterJoints))
+		getOldMasterJointPos = getWStransform(oldMasterJoints[i])
+		masterJointName = findName(masterJoint,sidePrefix)
+		translateAxis = '.t' + jointAimAxis
+		jointDistance = getDistance2Vectors(oldMasterJoints[i],selectedJoints[i+1])
+		jointTweendistance = jointDistance / (howManyTweenJoints + 1)
+		getMasterJointPos = getWStransform(oldMasterJoints[i])
+		previousJoint = maya.cmds.joint( n=masterJoint)
+
+		for j in range(1,howManyTweenJoints+1,1):
+			v = incrementPos(jointTweendistance,(j-1)*jointTweendistance,jointAimAxis)
+			previousJoint = maya.cmds.joint( previousJoint,n=sidePrefix + jointTypePrefix[i] + str(j), p=v )
+
+		setWStransform(masterJoint,getOldMasterJointPos)
+
+		if(jointAimAxis == 'x'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, skip=["x"] )
+			maya.cmds.delete(aim)
+		elif(jointAimAxis == 'y'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, skip=["y"] )
+			maya.cmds.delete(aim)
+		else:
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, skip=["z"] )
+			maya.cmds.delete(aim)
+	
+		setJointOriention(masterJoint)
+		parent = maya.cmds.listRelatives( oldMasterJoints[i], parent=True )
+		if(len(parent) != None):
+			maya.cmds.parent(masterJoint,parent[0])
+		
+		maya.cmds.parent(selectedJoints[i+1],previousJoint)
+		maya.cmds.delete(oldMasterJoints[i])
+		maya.cmds.select( clear=True )
+	
+
+
+
+
+
+howManyTweenJoints = 3
+jointAimAxis = 'x'
+sidePrefix = 'L_'
+jointTypePrefix = ['thigh_','shin_','temp1_','temp2']
+sel = maya.cmds.ls(selection = True)
+startJoint = sel[0]#hip_jnt
+endJoint = sel[1]#ankle_jnt
+maya.cmds.select(sel[0])
+maya.cmds.select(hierarchy = True)
+selHi = maya.cmds.ls(selection = True)
+selectedJoints = filterSelection(selHi,endJoint)
+
+
+insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints)
+
+

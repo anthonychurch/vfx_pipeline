@@ -1,0 +1,307 @@
+import maya.cmds
+
+maya.cmds.window()
+# Flag columnAttach Sets the attachment and offsets for the childrren layout. Side values are "left"|"right"|"both". "left" or "both" are recommended
+maya.cmds.columnLayout( columnAttach=('both', 5), rowSpacing=10, columnWidth=250 )
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.showWindow()
+
+import maya.cmds
+
+maya.cmds.window()
+#maya.cmds.rowLayout( numberOfColumns=3, columnWidth3=(80, 75, 150), adjustableColumn=2, columnAlign=(1, 'right'), columnAttach=[ (1,'both',0), (2,'both',0)], (3,'both',0) ] )
+maya.cmds.rowLayout( numberOfColumns=3, columnWidth3=(80, 75, 150), adjustableColumn=2, columnAlign=(1, 'right'))
+maya.cmds.text()
+maya.cmds.intField()
+maya.cmds.intSlider()
+maya.cmds.showWindow()
+
+import maya.cmds
+
+maya.cmds.window()
+#maya.cmds.rowLayout( numberOfColumns=3, columnWidth3=(80, 75, 150), adjustableColumn=2, columnAlign=(1, 'right'), columnAttach=[ (1,'both',0), (2,'both',0)], (3,'both',0) ] )
+maya.cmds.rowLayout( numberOfColumns=3, columnWidth3=(100, 100, 100) )
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.showWindow()
+
+
+import maya.cmds
+
+maya.cmds.window()
+#maya.cmds.rowLayout( numberOfColumns=3, columnWidth3=(80, 75, 150), adjustableColumn=2, columnAlign=(1, 'right'), columnAttach=[ (1,'both',0), (2,'both',0)], (3,'both',0) ] )
+maya.cmds.rowLayout( numberOfColumns=5, columnWidth5=(100, 100, 100, 100, 100) )
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.button()
+maya.cmds.showWindow()
+
+
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window()
+maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(120, 120), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+maya.cmds.columnLayout(windowName + '_global1a', rowSpacing=3)
+maya.cmds.button()
+#maya.cmds.button()
+maya.cmds.columnLayout(windowName + '_global1b', rowSpacing=3)
+maya.cmds.button()
+#maya.cmds.button()
+maya.cmds.showWindow()
+
+
+
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window(width=150)
+maya.cmds.columnLayout(adjustableColumn=True)
+maya.cmds.button(label='button 1')
+maya.cmds.button(label='button 2')
+maya.cmds.button(label='button 3')
+maya.cmds.button(label='button 4')
+maya.cmds.showWindow()
+
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window(width=150)
+maya.cmds.rowColumnLayout(numberOfColumns=1)
+maya.cmds.button(label='button 1')
+maya.cmds.button(label='button 2')
+maya.cmds.button(label='button 3')
+maya.cmds.button(label='button 4')
+maya.cmds.showWindow()
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window(width=150)
+maya.cmds.rowColumnLayout(numberOfRows=1)
+maya.cmds.button(label='button 1')
+maya.cmds.button(label='button 2')
+maya.cmds.button(label='button 3')
+maya.cmds.button(label='button 4')
+maya.cmds.showWindow()
+
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window(width=150)
+maya.cmds.rowColumnLayout(numberOfColumns=3,columnWidth=[(1,60),(2,80),(3,100)])
+maya.cmds.button(label='button 1')
+maya.cmds.button(label='button 2')
+maya.cmds.button(label='button 3')
+maya.cmds.button(label='button 4')
+maya.cmds.button(label='button 5')
+maya.cmds.button(label='button 6')
+maya.cmds.button(label='button 7')
+maya.cmds.button(label='button 8')
+maya.cmds.showWindow()
+
+
+import maya.cmds
+
+windowName='Test'
+
+maya.cmds.window(width=150)
+maya.cmds.rowColumnLayout(numberOfColumns=3,columnWidth=[(1,60),(2,80),(3,100)])
+maya.cmds.columnLayout(windowName + '_global1a', rowSpacing=3)
+maya.cmds.button(label='button 1')
+maya.cmds.button(label='button 2')
+maya.cmds.setParent('..')
+maya.cmds.columnLayout(windowName + '_global1b', rowSpacing=3)
+maya.cmds.button(label='button 3')
+maya.cmds.button(label='button 4')
+maya.cmds.showWindow()
+
+
+
+
+
+import maya.cmds
+
+windowName='Test'
+textAlign='left'
+questionButtonHeight=23
+
+maya.cmds.window(width=150)
+maya.cmds.rowColumnLayout(windowName + '_row2', numberOfColumns=2,columnWidth=[(1,450),(2,20)])
+
+maya.cmds.columnLayout(windowName + '_column1a', rowSpacing=3)
+maya.cmds.text( label= 'button 2', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 3', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= '', align= textAlign )
+maya.cmds.text( label= 'button 4', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 5', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 6', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 7', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 8', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 9', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= 'button 10', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( label= '', align= textAlign )
+maya.cmds.text( label= 'button 1', height=questionButtonHeight, align=textAlign )
+maya.cmds.text( windowName + '_space1a', label='' )
+
+maya.cmds.setParent('..')
+maya.cmds.columnLayout(windowName + '_column1b', rowSpacing=3)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.text( label= '', align= textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.text( label= '', align= textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.text( windowName + '_space1b', label='' )
+
+maya.cmds.showWindow()
+
+
+
+
+import maya.cmds
+
+windowName='Test'
+textAlign='left'
+questionButtonHeight=23
+
+maya.cmds.window(width=500)
+#maya.cmds.rowColumnLayout(windowName + '_row2', columnSpacing=[5,5], numberOfColumns=2,columnWidth=[(1,450),(2,20)])
+maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=1, columnWidth=(1,470), columnAlign=(1,'left'), columnAttach=(1,'both',0))
+
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 2', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 3', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.text( label= 'button 3', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 4', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height = questionButtonHeight)
+
+maya.cmds.showWindow()
+
+
+
+import maya.cmds
+
+windowName='Test'
+textAlign='left'
+questionButtonHeight=23
+thisModule='Create'
+
+maya.cmds.window(width=500)
+#maya.cmds.rowColumnLayout(windowName + '_row2', columnSpacing=[5,5], numberOfColumns=2,columnWidth=[(1,450),(2,20)])
+#maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=1, columnWidth=(1,470), columnAlign=(1,'left'), columnAttach=(1,'both',0))
+#maya.cmds.rowColumnLayout(windowName + '_row2', numberOfColumns=1,columnWidth=[(1,450)])
+maya.cmds.columnLayout(windowName + '_column1a', rowSpacing=3)
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 2', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height=questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 3', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height=questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 4', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height=questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 5', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height=questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.rowLayout( numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn=1, columnAlign=(1, 'right'))
+maya.cmds.text( label= 'button 6', height=questionButtonHeight, align=textAlign )
+maya.cmds.button(label='?', height=questionButtonHeight)
+maya.cmds.setParent('..')
+maya.cmds.text( windowName + '_space1a', label='' )
+
+maya.cmds.columnLayout(windowName + '_column1b', rowSpacing=3)
+cmdRun = thisModule + '.runWindow("' + windowName + '")'
+maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c=cmdRun )
+
+
+
+maya.cmds.showWindow()
+
+
+
+
+import maya.cmds
+maya.cmds.window(width=500)
+maya.cmds.rowColumnLayout( numberOfColumns=2, columnAttach=(1, 'right', 0), columnWidth=[ (91,100),(2,250) ] )
+maya.cmds.text( label='Name' )
+name = maya.cmds.textField()
+maya.cmds.text( label='Address' )
+address = maya.cmds.textField()
+maya.cmds.text( label='Phone Number' )
+phoneNumber = maya.cmds.textField()
+maya.cmds.text( label='Email' )
+email = maya.cmds.textField()
+
+# Attachcommands to pass focus to the next field if the Enter
+# key is pressed. HItting just the return key will keep focus
+# in the current field.
+maya.cmds.textField( name, edit=True, enterCommand=( 'maya.cmds.setFocus(\"' + address + '\")' ) )
+maya.cmds.textField( address, edit=True, enterCommand=( 'maya.cmds.setFocus(\"' + phoneNumber + '\")' ) )
+maya.cmds.textField( phoneNumber, edit=True, enterCommand=( 'maya.cmds.setFocus(\"' + email + '\")' ) )
+maya.cmds.textField( email, edit=True, enterCommand=( 'maya.cmds.setFocus(\"' + name + '\")' ) )
+
+maya.cmds.showWindow()
+
+
+
+
+import maya.cmds
+maya.cmds.window(width=500)
+maya.cmds.columnLayout( adjustableColumn=True, rowSpacing=10 )
+maya.cmds.frameLayout( label='Colours' )
+maya.cmds.columnLayout()
+collection1 = maya.cmds.radioCollection()
+cb1 = maya.cmds.radioButton( label='Red' )
+cb2 = maya.cmds.radioButton( label='Green' )
+cb3 = maya.cmds.radioButton( label='Blue' )
+cb4 = maya.cmds.radioButton( label='White' )
+cb5 = maya.cmds.radioButton( label='Black' )
+maya.cmds.setParent('..')
+maya.cmds.setParent('..')
+
+maya.cmds.frameLayout( label='Position' )
+maya.cmds.columnLayout()
+collection2 = maya.cmds.radioCollection()
+pb1 = maya.cmds.radioButton( label='Top' )
+pb2 = maya.cmds.radioButton( label='Middle' )
+pb3 = maya.cmds.radioButton( label='Bottom' )
+maya.cmds.setParent('..')
+maya.cmds.setParent('..')
+
+maya.cmds.radioCollection( collection1, edit=True, select=cb4 )
+maya.cmds.radioCollection( collection2, edit=True, select=pb3 )
+
+maya.cmds.showWindow()

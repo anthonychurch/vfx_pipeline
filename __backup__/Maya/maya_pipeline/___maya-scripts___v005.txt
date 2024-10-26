@@ -1,0 +1,146 @@
+# uiRig_createLocatorsOnJointChain #########################################
+import sys
+import imp
+import importlib
+
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['uiRig_createLocatorsOnJointChain']
+"""
+if imp.find_module('utilitiesUI')[0] :
+    #del utilitiesUI
+    #del sys.modules['utilitiesUI']
+    print(imp.find_module('utilitiesUI')[0])
+    #importlib.reload('utilitiesUI')
+    print(imp.find_module('utilitiesUI')[0])
+    
+if imp.find_module('uiRig_createLocatorsOnJointChain')[0] :
+    #importlib.reload('uiRig_createLocatorsOnJointChain')
+    del sys.modules['uiRig_createLocatorsOnJointChain']
+"""
+# Import Primary and supporting Modules
+import uiRig_createLocatorsOnJointChain as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can be called correctly
+uiRig.run('uiRig','ui')
+# uiRig_createLocatorsOnJointChain #########################################
+
+
+
+
+# uiRig_copySelectedJoints #########################################
+import sys
+import imp
+import importlib
+
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['uiRig_copySelectedJoints']
+"""
+if imp.find_module('utilitiesUI')[0] :
+    #del utilitiesUI
+    #del sys.modules['utilitiesUI']
+    print(imp.find_module('utilitiesUI')[0])
+    #importlib.reload('utilitiesUI')
+    print(imp.find_module('utilitiesUI')[0])
+    
+if imp.find_module('uiRig_copySelectedJoints')[0] :
+    #importlib.reload('uiRig_createLocatorsOnJointChain')
+    del sys.modules['uiRig_copySelectedJoints']
+"""
+# Import Primary and supporting Modules
+import uiRig_copySelectedJoints as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can be called correctly
+uiRig.run('uiRig','ui')
+# uiRig_copySelectedJoints #########################################
+
+
+
+
+
+# uiRig_createControlCurves #########################################
+import sys
+import imp
+import importlib
+
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['utilitiesCurves']
+del sys.modules['uiRig_createControlCurves']
+"""
+if imp.find_module('utilitiesUI')[0] :
+    #del utilitiesUI
+    #del sys.modules['utilitiesUI']
+    print(imp.find_module('utilitiesUI')[0])
+    #importlib.reload('utilitiesUI')
+    print(imp.find_module('utilitiesUI')[0])
+    
+if imp.find_module('uiRig_createControlCurves')[0] :
+    #importlib.reload('uiRig_createControlCurves')
+    del sys.modules['uiRig_createControlCurves']
+"""
+# Import Primary and supporting Modules
+import uiRig_createControlCurves as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can 
+uiRig.run('uiRig','ui')
+# uiRig_createControlCurves #########################################
+
+
+
+
+
+# uiRig_CreateEmptyGroupBasedOnObject #########################################
+import sys
+import imp
+import importlib
+
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['utilitiesCurves']
+del sys.modules['uiRig_CreateEmptyGroupBasedOnObject']
+"""
+if imp.find_module('utilitiesUI')[0] :
+    #del utilitiesUI
+    #del sys.modules['utilitiesUI']
+    print(imp.find_module('utilitiesUI')[0])
+    #importlib.reload('utilitiesUI')
+    print(imp.find_module('utilitiesUI')[0])
+    
+if imp.find_module('uiRig_createControlCurves')[0] :
+    #importlib.reload('uiRig_createControlCurves')
+    del sys.modules['uiRig_createControlCurves']
+"""
+# Import Primary and supporting Modules
+import uiRig_CreateEmptyGroupBasedOnObject as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can be called correctly
+uiRig.run('uiRig','ui')
+# uiRig_CreateEmptyGroupBasedOnObject #########################################
+
+
+
+
+
+

@@ -1,0 +1,40 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CREATE STRETCHY FK CONNECTIONS FOR THE ARM FK SETUP JOINTS=========================================================================================================================
+//INSTRUCTIONS;
+//1.
+//2.
+
+string $sel[] = `ls -sl`;
+string $parent[] = `listRelatives -parent $sel[0]`;
+string $setRange[] = `listConnections -d on -s off ($sel[0] + ".stiffness")`;
+string $constraintNode[] = `listConnections -d on -s on ($parent[0] + ".translateX")`;
+string $constraintAttr[] = `listAttr -st "*W0" $constraintNode[0]`;
+
+string $axis = "Y";
+
+string $isolateAttr = ".isolate";
+string $setRangeAttr = ".value" + $axis;
+
+
+//print($setRange[0]);
+//print($parent[0]);
+//print($sel[0]);
+//print($constraintNode[0]);
+//print($constraintAttr[0]);
+
+
+string $connector = $sel[0] + $isolateAttr;
+string $socket = $setRange[0] + $setRangeAttr;
+connectAttr -force  $connector  $socket;
+
+
+
+
+setAttr ($setRange[0] + (".oldMax" + $axis)) 10;
+setAttr ($setRange[0] + (".min" + $axis)) 1;
+
+$setRangeAttr = ".outValue" + $axis;
+
+string $connector = $setRange[0] + $setRangeAttr;
+string $socket = $constraintNode[0] + ("." + $constraintAttr[0]);
+connectAttr -force  $connector  $socket;

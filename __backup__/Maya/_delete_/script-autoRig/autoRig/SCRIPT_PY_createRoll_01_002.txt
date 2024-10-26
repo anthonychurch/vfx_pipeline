@@ -1,0 +1,84 @@
+import maya.cmds
+import math
+
+def createRoll(prefix,array,control):
+	maxRoll = 120
+	whichAxis = ['X', 'Y', 'Z']
+
+	#cREATE TEMP REMAP SYSTEM
+	inputNode = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	resultNode = maya.cmds.shadingNode('multiplyDivide',n='rollResult_multiplyDivide' + '1',au=True)
+	rollRemapNode = maya.cmds.shadingNode('remapValue',n='roll_remap' + '1',au=True) 
+	source =  inputNode + '.outputX'
+	desitination =  rollRemapNode + '.inputValue'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+	source =  rollRemapNode + '.outValue'
+	desitination =  resultNode + '.input1X'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+	maya.cmds.setAttr(rollRemapNode + '.value[0].value_Position',0.0)
+	maya.cmds.setAttr(rollRemapNode + '.value[0].value_FloatValue',1.0)
+	maya.cmds.setAttr(rollRemapNode + '.value[0].value_Interp',3)
+
+	maya.cmds.setAttr(rollRemapNode + '.value[1].value_Position',1.0)
+	maya.cmds.setAttr(rollRemapNode + '.value[1].value_FloatValue',0.0)
+	maya.cmds.setAttr(rollRemapNode + '.value[1].value_Interp',2)
+
+	maya.cmds.setAttr(rollRemapNode + '.value[2].value_Position',0.5)
+	maya.cmds.setAttr(rollRemapNode + '.value[2].value_FloatValue',0.12)
+	maya.cmds.setAttr(rollRemapNode + '.value[2].value_Interp',3)
+
+	maya.cmds.setAttr(rollRemapNode + '.value[3].value_Position',0.2)
+	maya.cmds.setAttr(rollRemapNode + '.value[3].value_FloatValue',0.380)
+	maya.cmds.setAttr(rollRemapNode + '.value[3].value_Interp',3)
+
+	maya.cmds.setAttr(rollRemapNode + '.inputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.inputMax',maxRoll)
+	maya.cmds.setAttr(rollRemapNode + '.outputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.outputMax',1)
+
+	howManyMultiplyNodes = math.ceil(float(len(sel))  / 3.0)
+	fraction = maxRoll / len(sel)
+	increment = maxRoll
+	index = 0
+	brk = 0
+	multiplyNodes = []
+	
+	for i in range(0,howManyMultiplyNodes,1):
+		rollMult = maya.cmds.shadingNode('multiplyDivide',n=prefix + 'roll_multiplyDivide' + '1',au=True)
+		multiplyNodes.append(rollMult)
+		for j in range(0,3,1):
+			if(brk == 0):
+				maya.cmds.setAttr(inputNode + '.input1X', increment)
+				result = maya.cmds.getAttr(resultNode + '.outputX')
+				rollGroup = maya.cmds.group(em=True, n=(array[index] + '_ROLL'))
+				maya.cmds.parent(rollGroup,array[index],r=True)
+				#loc = maya.cmds.spaceLocator(n=(array[index] + '_LOC'))
+				#maya.cmds.parent(loc,rollGroup,r=True)
+				maya.cmds.setAttr(rollMult + '.input2' + str(whichAxis[j]), result)
+				source =  control + '.rotateX'
+				desitination = rollMult + '.input1' + str(whichAxis[j])
+				maya.cmds.connectAttr(source, desitination, force=True)
+				source =  rollMult + '.outputX'
+				desitination = rollGroup + '.rotateX'
+				maya.cmds.connectAttr(source, desitination, force=True)
+				increment = increment - fraction
+				if(index == len(sel)-1):
+					brk = 1
+					print('createRoll ::brk = ' + str(brk))
+				index = index + 1
+		
+	maya.cmds.delete(inputNode)
+	maya.cmds.delete(resultNode)
+	maya.cmds.delete(rollRemapNode)
+
+	return multiplyNodes
+
+
+
+sel = maya.cmds.ls(selection=True)
+
+createRoll('L_IK_arm_',sel,'ctrl')

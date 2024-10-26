@@ -1,0 +1,110 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE IK FK SWITCH
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the chain starting from the start to the end then selct the motion parth curve last
+//2.
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+int $j;
+float $howManyTweenJoints = 3;
+
+
+
+string $sidePrefix = "L_";
+
+string $prefix = $sidePrefix + "leg_";
+
+string $startJoint = $sidePrefix + "hip";
+string $midJoint = $sidePrefix + "knee";
+string $endJoint = $sidePrefix + "ankle";
+
+string $tweenJoint1 = $sidePrefix + "thigh";
+string $tweenJoint2 = $sidePrefix + "shin";
+
+string $previousJoint = $startJoint;
+
+//unparent all the joints
+//for($i = 0; $i < $howManyJoints; $i++){
+//	parent -w $sel[$i];
+//}
+
+string $startLoc[] = `spaceLocator -n ($prefix + "startLocator") -p 0 0 0`;
+string $midLoc[] = `spaceLocator -n ($prefix + "midLocator") -p 0 0 0`;
+string $endLoc[] = `spaceLocator -n ($prefix + "endLocator") -p 0 0 0`;
+
+string $startParent[] = `parentConstraint $startJoint $startLoc[0]`;
+string $midParent[] = `parentConstraint $midJoint $midLoc[0]`;
+string $endParent[] = `parentConstraint $endJoint $endLoc[0]`;
+
+float $startJointPosX = `getAttr ($startLoc[0] + ".translateX")`;
+float $startJointPosY = `getAttr ($startLoc[0] + ".translateY")`;
+float $startJointPosZ = `getAttr ($startLoc[0] + ".translateZ")`;
+float $midJointPosX = `getAttr ($midLoc[0] + ".translateX")`;
+float $midJointPosY = `getAttr ($midLoc[0] + ".translateY")`;
+float $midJointPosZ = `getAttr ($midLoc[0] + ".translateZ")`;
+float $endJointPosX = `getAttr ($endLoc[0] + ".translateX")`;
+float $endJointPosY = `getAttr ($endLoc[0] + ".translateY")`;
+float $endJointPosZ = `getAttr ($endLoc[0] + ".translateZ")`;
+
+
+string $distanceNode1 = `distanceDimension  -sp $startJointPosX $startJointPosY $startJointPosZ -ep $midJointPosX $midJointPosY $midJointPosZ` ;
+
+string $distanceNode2 = `distanceDimension  -sp $midJointPosX $midJointPosY $midJointPosZ -ep $endJointPosX $endJointPosY $endJointPosZ` ;
+
+float $half = $howManyJoints / 2;
+float $distanceDim1 = `getAttr ($distanceNode1 + ".distance")`;
+float $distanceDim2 = `getAttr ($distanceNode2 + ".distance")`;
+
+
+float $jointRadius = `getAttr ($startJoint + ".radius")`;
+
+float $divide1 =  $distanceDim1 / ($howManyTweenJoints + 1);
+print ($divide1 + ";     ");
+float $divide2 =  $distanceDim2 / ($howManyTweenJoints + 1);
+print ($divide2 + ";     ");
+
+int $increment = 0;
+
+//set up the motion path setup for the first half
+for($i = 0; $i < $howManyTweenJoints; $i++){
+	string $insertJoint = `insertJoint $previousJoint`;
+	setAttr ($insertJoint + ".tx") $divide1;
+	setAttr ($insertJoint + ".radius") $jointRadius;
+	string $renameJoint = `rename $insertJoint ($tweenJoint1 + ($i + 1))`;
+	$previousJoint = $renameJoint;
+}
+
+setAttr ($midJoint + ".tx") $divide1;
+
+
+$previousJoint = $midJoint;
+
+//set up the motion path setup for the first half
+for($i = 0; $i < $howManyTweenJoints; $i++){
+	string $insertJoint = `insertJoint $previousJoint`;
+	setAttr ($insertJoint + ".tx") $divide2;
+	setAttr ($insertJoint + ".radius") $jointRadius;
+	string $renameJoint = `rename $insertJoint ($tweenJoint2 + ($i + 1))`;
+	$previousJoint = $renameJoint;
+}
+
+setAttr ($endJoint + ".tx") $divide2;
+
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

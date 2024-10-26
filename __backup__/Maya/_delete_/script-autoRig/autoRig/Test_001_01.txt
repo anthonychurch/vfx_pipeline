@@ -1,0 +1,64 @@
+import maya.cmds
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	print('getShapeNodes :: getShape = ' + str(getShape))
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+def setUpIkFfVisibilitySwitch(prefix,ikArray,fkArray,ctrl,attribute,setRange):
+	checkAttrExist(ctrl,attribute,'double',0,10,0,True)
+	ikFkSwitchSetRange = prefix + 'ikFk_vis_switch_setRange'
+	setRangeNode = ''
+
+	source = ctrl + '.' + attribute
+
+	if maya.cmds.objExists(setRange):
+		setRangeNode = setRange
+	else:
+		if(maya.cmds.objExists(ikFkSwitchSetRange) == False):
+			setRangeNode = maya.cmds.shadingNode('setRange',n=ikFkSwitchSetRange,au=True)
+			maya.cmds.setAttr(setRangeNode + '.oldMinX',10)
+			maya.cmds.setAttr(setRangeNode + '.oldMinY',0)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxX',0)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+			maya.cmds.setAttr(setRangeNode + '.minX',1)
+			maya.cmds.setAttr(setRangeNode + '.minY',0)
+			maya.cmds.setAttr(setRangeNode + '.maxX',0)
+			maya.cmds.setAttr(setRangeNode + '.maxY',1)
+			
+			destination = setRangeNode + '.valueX'
+			maya.cmds.connectAttr(source, destination, force=True)
+
+			destination = setRangeNode + '.valueY'
+			maya.cmds.connectAttr(source, destination, force=True)
+		else:
+			setRangeNode = ikFkSwitchSetRange
+
+def setColour(array,colour):
+	for a in array:
+		if maya.cmds.objExists(a):
+			shape = getShapeNodes(a)
+			maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+			maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable):
+	if maya.cmds.attributeQuery( attr, node=obj, exists=True ):
+		maya.cmds.deleteAttr(obj, at=attr)
+		
+	maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+	if(keyable == True):
+		maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+	else:
+		maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+ikArray = ['L_IK_foot_CTRL','L_IK_hip_LOC','','L_IK_leg_poleVector_CTRL']
+
+setUpIkFfVisibilitySwitch('L_IK_leg_',ikArray,[],'L_leg_IKFK_CTRL','IkFk','test_setrange')
+
+setColour(ikArray,4)

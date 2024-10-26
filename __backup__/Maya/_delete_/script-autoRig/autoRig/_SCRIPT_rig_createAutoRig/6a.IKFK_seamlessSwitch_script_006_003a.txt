@@ -1,0 +1,257 @@
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+string $IKprefix = $sidePrefix + "IK_";
+string $FKprefix = $sidePrefix + "FK_";
+
+
+string $handCTRL = $sidePrefix + "hand_CTRL";
+
+float $direction = 2;
+
+string $IKstartCTRL = $IKprefix + "shoulder_LOC";
+string $IKstartTracker = $IKprefix + "shoulder_tracking_LOC";
+string $IKmiddleTracker = $IKprefix + "elbow_tracking_LOC";
+string $IKendCTRL = $IKprefix + "wrist_CTRL";
+string $IKpoleVector = $IKprefix + "arm_poleVector_CTRL";
+string $IKFKswitch = $sidePrefix + "IKFK_arm_CTRL";
+
+string $masterCTRL = "MASTER_CTRL";
+
+string $clavicleCTRL = $sidePrefix + "clavicle_CTRL";
+
+string $FKstartCTRL = $FKprefix + "shoulder_CTRL";
+string $FKmiddleCTRL = $FKprefix + "elbow_CTRL";
+string $FKendTracker = $FKprefix + "wrist_tracking_LOC";
+string $FKpoleVectorTracker = $FKprefix + "arm_poleVector_tracking_LOC";
+
+string $IKstartJoint = $IKprefix + "shoulder";
+string $IKmiddleJoint = $IKprefix + "elbow";
+string $IKendJoint = $IKprefix + "wrist";
+
+string $FKstartJoint = $FKprefix + "shoulder";
+string $FKmiddleJoint = $FKprefix + "elbow";
+string $FKendJoint = $FKprefix + "wrist";
+
+string $FKarmScale[] = `listConnections -s on ($FKmiddleJoint + ".tx")`;//$FKprefix + "arm_scale_multiplyDivide1";
+
+string $IKarmScale[] = `listConnections -s on ($IKmiddleJoint + ".tx")`;//$FKprefix + "arm_limit_multiplyDivide1"
+
+
+
+
+
+
+addAttr -ln IKFK -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_shoulder -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_elbow -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_wrist -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_arm_poleVector -at message L_IKFK_arm_CTRL;
+addAttr -ln FK_stretch -at message L_IKFK_arm_CTRL;
+addAttr -ln IK_stretch -at message L_IKFK_arm_CTRL;
+
+//connectAttr -f ($IKFKswitch + ".message") L_IKFK_arm_CTRL.IkFk;
+connectAttr -f ($FKstartCTRL + ".message") L_IKFK_arm_CTRL.FK_shoulder;
+connectAttr -f ($FKmiddleCTRL + ".message") L_IKFK_arm_CTRL.FK_elbow;
+connectAttr -f ($FKendTracker + ".message") L_IKFK_arm_CTRL.FK_wrist;
+connectAttr -f ($FKpoleVectorTracker + ".message") L_IKFK_arm_CTRL.FK_arm_poleVector;
+connectAttr -f ($IKstartTracker + ".message") L_IKFK_arm_CTRL.IK_shoulder;
+connectAttr -f ($IKmiddleTracker + ".message") L_IKFK_arm_CTRL.IK_elbow;
+connectAttr -f ($IKendCTRL + ".message") L_IKFK_arm_CTRL.IK_wrist;
+connectAttr -f ($IKpoleVector + ".message") L_IKFK_arm_CTRL.IK_arm_poleVector;
+connectAttr -f ($FKarmScale[0] + ".message") L_IKFK_arm_CTRL.FK_stretch;
+connectAttr -f ($IKarmScale[0] + ".message") L_IKFK_arm_CTRL.IK_stretch;
+
+
+//SEamless IK FK switch
+string $sel[] = `ls -sl`;
+
+int $time = `currentTime -q`;
+currentTime -edit ($time - 1);
+
+//setKeyframe ($sel[0] + ".IkFk");
+
+string $IKstart[] = `listConnections -s on ($sel[0] + ".IK_shoulder")`;
+string $IKmid[] = `listConnections -s on ($sel[0] + ".IK_elbow")`;
+string $IKend[] = `listConnections -s on ($sel[0] + ".IK_wrist")`;
+string $IKPV[] = `listConnections -s on ($sel[0] + ".IK_arm_poleVector")`;
+string $IKscale[] = `listConnections -s on ($sel[0] + ".IK_stretch")`;
+
+string $FKstart[] = `listConnections -s on ($sel[0] + ".FK_shoulder")`;
+string $FKmid[] = `listConnections -s on ($sel[0] + ".FK_elbow")`;
+string $FKend[] = `listConnections -s on ($sel[0] + ".FK_wrist")`;
+string $FKPV[] = `listConnections -s on ($sel[0] + ".FK_arm_poleVector")`;
+string $FKscale[] = `listConnections -s on ($sel[0] + ".FK_stretch")`;
+
+
+
+
+ 
+
+//if(($sel[0] + ".IkFk") == 10){
+	print("//FK 2 IK");
+
+
+	float $stretch = `getAttr ($IKscale[0] + ".input2X")`;
+
+
+
+	
+	//FK 2 IK
+	setAttr ($IKend[0] + ".stiffness") 10;
+	setAttr ($IKend[0] + ".isolate") 0;
+	
+
+	float $startRotate[] = `xform -q -ws -ro $IKstart[0]`;
+	float $midRotate[] = `xform -q -ws -ro $IKmid[0]`;
+
+	//setKeyframe ($IKend[0] + ".translate");
+	//setKeyframe ($IKPV[0] + ".translate");
+	//setKeyframe ($IKend[0] + ".stiffness");
+	//setKeyframe ($IKend[0] + ".stretchIK");
+	//setKeyframe ($IKend[0] + ".autoStretchIK");
+	//setKeyframe ($IKend[0] + ".isolate");
+
+	
+
+	currentTime -edit $time;
+
+	xform -ws -ro $startRotate[0] $startRotate[1] $startRotate[2] $FKstart[0];
+	xform -ws -ro $midRotate[0] $midRotate[1] $midRotate[2] $FKmid[0];
+
+	//setKeyframe ($FKstart[0] + ".rotate");
+	//setKeyframe ($FKmid[0] + ".rotate");
+	//setKeyframe ($FKmid[0] + ".stretchFK");
+
+	setAttr ($FKmid[0] + ".stretchFK") $stretch;
+	//setKeyframe ($FKmid[0] + ".stretchFK");
+	setAttr ($sel[0] + ".IkFk") 0;
+	//setKeyframe ($sel[0] + ".IkFk");
+	
+
+//} else {
+
+
+
+string $sel[] = `ls -sl`;
+
+int $time = `currentTime -q`;
+currentTime -edit ($time - 1);
+
+//setKeyframe ($sel[0] + ".IkFk");
+
+string $IKstart[] = `listConnections -s on ($sel[0] + ".IK_shoulder")`;
+string $IKmid[] = `listConnections -s on ($sel[0] + ".IK_elbow")`;
+string $IKend[] = `listConnections -s on ($sel[0] + ".IK_wrist")`;
+string $IKPV[] = `listConnections -s on ($sel[0] + ".IK_arm_poleVector")`;
+string $IKscale[] = `listConnections -s on ($sel[0] + ".IK_stretch")`;
+
+string $FKstart[] = `listConnections -s on ($sel[0] + ".FK_shoulder")`;
+string $FKmid[] = `listConnections -s on ($sel[0] + ".FK_elbow")`;
+string $FKend[] = `listConnections -s on ($sel[0] + ".FK_wrist")`;
+string $FKPV[] = `listConnections -s on ($sel[0] + ".FK_arm_poleVector")`;
+string $FKscale[] = `listConnections -s on ($sel[0] + ".FK_stretch")`;
+
+
+
+	//IK 2 FK
+	print("//IK 2 FK");
+
+	float $stretch = `getAttr ($FKscale[0] + ".input1X")`;
+
+	
+	//setKeyframe ($sel[0] + ".IkFk");
+
+	setAttr ($IKend[0] + ".stiffness") 10;
+	setAttr ($IKend[0] + ".isolate") 0;
+	//setAttr ($IKend[0] + ".stretchFK");
+	//setAttr ($IKend[0] + ".autoStretchIK");
+
+	float $endTranslate[] = `xform -q -ws -t $FKend[0]`;
+	print($endTranslate);
+	xform -ws -t $endTranslate[0] $endTranslate[1] $endTranslate[2] $IKend[0];
+
+	float $endRotate[] = `xform -q -ws -ro $FKend[0]`;
+	float $poleVectorTranslate[] = `xform -q -ws -t $FKPV[0]`;
+	float $poleVectorRotate[] = `xform -q -ws -ro $FKPV[0]`;
+
+	//setKeyframe ($FKstart[0] + ".rotate");
+	//setKeyframe ($FKmid[0] + ".rotate");
+	//setKeyframe ($FKmid[0] + ".stretchFK");
+
+	float $stretch = `getAttr ($FKmid[0] + ".stretchFK")`;
+
+	//setKeyframe ($IKend[0] + ".stiffness");
+	//setKeyframe ($IKend[0] + ".stretchIK");
+	//setKeyframe ($IKend[0] + ".autoStretchIK");
+	//setKeyframe ($IKend[0] + ".isolate");
+
+	currentTime -edit $time;
+
+	setAttr ($IKend[0] + ".stiffness") 10;
+	setAttr ($IKend[0] + ".isolate") 0;
+	setAttr ($IKend[0] + ".autoStretchIK") 10;
+
+	//setKeyframe ($IKend[0] + ".stiffness");
+	//setKeyframe ($IKend[0] + ".stretchIK");
+	//setKeyframe ($IKend[0] + ".autoStretchIK");
+	//setKeyframe ($IKend[0] + ".isolate");
+
+	//xform -ws -t $endTranslate[0] $endTranslate[1] $endTranslate[2] $IKend[0];
+	//xform -ws -ro $endRotate[0] $endRotate[1] $endRotate[2] $IKend[0];
+	//xform -ws -t $poleVectorTranslate[0] $poleVectorTranslate[1] $poleVectorTranslate[2] $IKPV[0];
+	//xform -ws -ro $poleVectorRotate[0] $poleVectorRotate[1] $poleVectorRotate[2] $IKPV[0];
+
+	string $parentConstrain[] = `parentConstraint $FKend[0] $IKend[0]`;
+	//setKeyframe ($IKend[0] + ".translate");
+	//setKeyframe ($IKend[0] + ".rotate");
+	delete $parentConstrain[0];
+	string $parentConstrain[] = `parentConstraint $FKPV[0] $IKPV[0]`;
+	//setKeyframe ($IKPV[0] + ".translate");
+	//setKeyframe ($IKPV[0] + ".rotate");
+	delete $parentConstrain[0];
+
+
+	
+
+	/*if($stretch == 1){
+			setAttr ($IKend[0] + ".stretchIK") 0; 
+		}else{
+			setAttr ($IKend[0] + ".stretchIK") 10; */
+			//setKeyframe ($FKmid[0] + ".stretchIK");
+			//setAttr ($IKend[0] + ".autoStretchIK") 10;
+			//setKeyframe ($FKmid[0] + ".autoStretchIK");
+			//setAttr ($IKend[0] + ".stiffness") 10;
+			//setKeyframe ($FKmid[0] + ".stiffness");
+
+			
+		////}  */
+
+	//setKeyframe ($IKend[0] + ".stretchIK");
+
+	setAttr ($sel[0] + ".IkFk") 10;
+	//setKeyframe ($sel[0] + ".IkFk");
+
+
+	
+//}
+
+
+
+
+
+
+
+string $sel[] = `ls -sl`;
+
+
+if(($sel[0] + ".IkFk") == 10){
+	print("FK       ");
+
+} else {
+	print("IK       ");
+
+}

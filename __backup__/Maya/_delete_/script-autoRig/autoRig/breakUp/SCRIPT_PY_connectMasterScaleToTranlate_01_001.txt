@@ -1,0 +1,58 @@
+import maya.cmds
+import random
+import math
+
+
+def connectScale(array,object):
+	howManyMultiplyNodes = 1
+	howManyObjects = len(array)
+	brake = 0
+
+	if(howManyObjects>3):
+		howManyMultiplyNodes = int(math.ceil(float(howManyObjects) / float(3)))
+
+	increment = 0
+	whichAxis = ['X','Y','Z']
+
+	for i in range(0, howManyMultiplyNodes, 1):
+		source = object + '.' + 'sx'
+		
+		mn = maya.cmds.shadingNode('multiplyDivide', n='scaler' + str(i), au=True)
+		print(howManyObjects)
+		destination = mn + '.' + 'input1X'
+		maya.cmds.connectAttr(source, destination, force=True)
+		destination = mn + '.' + 'input1Y'
+		maya.cmds.connectAttr(source, destination, force=True)
+		destination = mn + '.' + 'input1Z'
+		maya.cmds.connectAttr(source, destination, force=True)
+		
+		
+		for j in range(0, 3, 1):
+			if(brake==0):
+				t = maya.cmds.getAttr(array[increment] + '.' + 'tx')
+				print(howManyObjects)
+				maya.cmds.setAttr(mn + '.' + 'input2' + whichAxis[j],t)
+				source = mn + '.' + 'output' + whichAxis[j]
+				destination = array[increment] + '.' + 'tx'
+				maya.cmds.connectAttr(source, destination, force=True)
+			
+				increment += 1
+				if(increment>len(array)):
+					brake = 1
+
+
+
+
+sel = maya.cmds.ls(selection=True)
+last = maya.cmds.ls(selection=True,tail=1)[0]
+howManyObjects = len(sel)-1
+print(howManyObjects)
+
+newarray = []
+for i in range(0, howManyObjects, 1):
+	newarray.append(sel[i])
+
+connectScale(newarray,last)
+
+
+

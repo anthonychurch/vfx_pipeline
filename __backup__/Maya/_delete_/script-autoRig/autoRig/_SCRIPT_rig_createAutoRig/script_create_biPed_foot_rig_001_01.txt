@@ -1,0 +1,34 @@
+//Find the position for foot, ball, toe and store them
+
+
+//select joints and store in an array. Store how many joints were selected
+//you must select ankle joint
+select -hi;
+string $footJoints[] = `ls -sl -type "joint"`;
+int $howManyJoints = size($footJoints);
+//string $sel[] = `ls -sl`;
+string $prefix = "TEMP_";//"R_";
+/*
+for ($i = 0; $i < $howManyJoints; $i++){
+
+}
+*/
+//tipToe locator and position it
+string $createLocator[] = `spaceLocator -n ($prefix + "tipToe_LOC") -p 0 0 0`;
+int $whichJointLocation = $howManyJoints - 1;//select tiptoe
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+
+
+//THIS WORKS******************************************************START
+/*
+string $sel[] = `ls -sl`;
+
+string $prefix = "R_";
+string $createLocator[] = `spaceLocator -n ($prefix + "fuckUmaya") -p 0 0 0`;
+//pointConstraint $sel[0] $createLocator;
+pointConstraint -offset 0 0 0 -skip y -weight 1 $sel[0] $createLocator;
+*/
+//THIS WORKS******************************************************END
+

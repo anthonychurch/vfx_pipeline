@@ -1,0 +1,106 @@
+#create IK
+#set up polevector control
+#
+
+import maya.cmds
+import random
+import math
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(previous,a,r=True)
+	previous = a
+
+def filterSelection(array,breakerObj):
+	newArray = []
+	brake = False
+	for n in array:
+		if(brake == False):
+			newArray.append(n)
+			if(n == breakerObj):
+				print n
+				brake = True
+	return newArray
+	
+def createIKP(jointArray,sidePrefix,jointType):
+	newArray = []
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])
+	maya.cmds.parent(duplicate, w=True)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True)
+		print( 'child = ' + str(child) )
+		#if(maya.cmds.objectExist(child)) && (len(child) == 1):
+			#duplicate = child[0]
+		#else:
+			#do something
+	#last = newArray[len(newArray)]
+	#if(maya.cmds.objectExist(maya.cmds.listRelatives(last,c=True)):
+		#maya.cmds.delete(maya.cmds.listRelatives(last,c=True))
+
+		
+
+sidePrefix = 'L_'
+upAxis = 'z'
+howManyTweenJoints = 3
+howManyKeyJoints = 3
+prefix = sidePrefix + 'IK_'
+pv = 'L_IK_leg_poleVector_CTRL'
+kneeJoint = 'L_knee'
+groups = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+skeletonCtrlGrp = groups[3]
+sel = maya.cmds.ls(selection = True)
+startJoint = sel[0]
+endJoint = sel[1]
+maya.cmds.select(sel[0])
+maya.cmds.select(hierarchy = True)
+selHi = maya.cmds.ls(selection = True)
+selectedJoints = filterSelection(selHi,endJoint)
+maya.cmds.select( clear=True )
+
+setUpGrp(groups)
+setupPolVector(pv,kneeJoint,12,upAxis)
+createIKP(jointArray,sidePrefix,jointType)
+
+
+
+
+

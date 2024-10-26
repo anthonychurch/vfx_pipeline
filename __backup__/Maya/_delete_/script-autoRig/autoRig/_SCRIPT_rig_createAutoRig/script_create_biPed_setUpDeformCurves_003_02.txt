@@ -1,0 +1,76 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE IK FK SWITCH
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the chain starting from the start to the end then selct the motion parth curve last
+//2. create a joint chain no greater than 11 
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel)-1;//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyControls;
+int $i;
+string $prefix = "R_leg_";
+int $increment; 
+
+if(($howManyJoints  % 2) == 0){
+	//print ("even");
+	$howManyControls = ceil($howManyJoints / 3);//these may be varied
+}else{
+	//print ("odd");
+	$howManyControls = ceil($howManyJoints / 2);//these may be varied. This is to select every third joint
+}
+
+//duplicate controls that have already been created and rest on the grid origin. 
+//copy and locate/orient at the apropriate joint
+
+//print ($howManyControls +  ";     ");
+
+//print ($howManyJoints + ";     ");
+
+$increment = ceil($howManyJoints / $howManyControls);
+//print $increment;
+int $j = 0;
+int $howManyTeenJoints = $increment - 1;
+//print ("$howManyTeenJoints = " + $howManyTeenJoints);
+int $k;
+
+//float $
+print ("$howManyControls = " + $howManyControls);
+
+//create the controls
+for($i = 0; $i < ($howManyControls); $i++){
+	
+	string $copy[] = `duplicate -n ($prefix + "CTRL_" + $sel[$j]) $last[0]`;
+	string $group1 = `group -n ($prefix + $sel[$j] + "_AV") $copy[0]`;
+	string $group2 = `group -n ($prefix + $sel[$j] + "_GRP") $group1`;
+	
+	string $parentConstraint[] = `parentConstraint $sel[$j] $group2`;
+	delete $parentConstraint[0];
+	select -r $copy[0];
+	makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+	
+	parentConstraint $copy[0] $sel[$j];
+	
+	/*for($k = $howManyTeenJoints; $k > 0; $k--){
+		if($j == 0 ){
+			print ("boo" + $sel[$j + $k]);
+			parentConstraint $copy[0] $sel[$j + $k];
+		}else if($i < ($howManyControls-1)){
+			print ("crap" + $sel[$j + $k]);
+			//parentConstraint $copy[0] $sel[$j];
+			parentConstraint $copy[0] $sel[$j + $k];
+			parentConstraint $copy[0] $sel[$j - $k];
+		}else{
+			print ("poo" + $sel[$j - $k]);
+			parentConstraint $copy[0] $sel[$j - $k];
+			}
+
+
+	}*/
+	$j = $j + $increment;
+	
+}

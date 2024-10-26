@@ -1,0 +1,45 @@
+window -title "new window" -widthHeight 300 200 myWindow11;
+frameLayout -label " " -borderStyle "in" -lv false -bv false -mw 10 -mh 10;
+columnLayout -adjustableColumn true;
+text -label " ";
+rowLayout -numberOfColumns 3
+    -columnWidth3 80 80 80
+    -adjustableColumn3 3
+    -columnAlign  3 "left"
+    -columnAttach 1 "both" 0
+    -columnAttach 2 "both" 0
+    -columnAttach 3 "both" 0;
+checkBox -label "One";
+checkBox -label "Two";
+checkBox -label "Three";
+setParent ..;
+text -label " ";
+frameLayout -label "Buttons" -lv false -labelAlign "top" -borderStyle "in";
+
+string $form = `formLayout`;
+string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+formLayout -edit -attachForm $tabs "top" 0 -attachForm $tabs "left" 0 -attachForm $tabs "bottom" 0 -attachForm $tabs "right" 0 $form;
+
+string $child1 = `rowColumnLayout -numberOfColumns 2`;
+scrollLayout -horizontalScrollBarThickness 16 -verticalScrollBarThickness 16;
+floatFieldGrp -numberOfFields 3 -label "Scale" -extraLabel "cm" -value1 0.3 -value2 0.5 -value3 0.1;
+button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button;
+setParent ..;
+setParent ..;
+
+string $child2 = `rowColumnLayout -numberOfColumns 2`;
+scrollLayout -horizontalScrollBarThickness 16 -verticalScrollBarThickness 16;
+floatFieldGrp -numberOfFields 3 -label "Scale" -extraLabel "cm" -value1 0.3 -value2 0.5 -value3 0.1;
+button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button; button;
+setParent ..;
+setParent ..;
+
+tabLayout -edit -tabLabel $child1 "One" -tabLabel $child2 "Two" $tabs;
+setParent ..;
+setParent ..;
+setParent ..;
+text -label " ";
+text -label " ";
+button;
+
+showWindow myWindow11;

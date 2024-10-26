@@ -1,0 +1,46 @@
+def setUpIkFfVisibilitySwitch(prefix,ikArray,fkArray,ikfkSwitchCTRL):
+	ikFkSwitchSetRange = prefix + 'ikFk_vis_switch_setRange'
+	setRangeNode = ''
+	if(maya.cmds.objExists(ikFkSwitchSetRange) == False):
+		setRangeNode = maya.cmds.shadingNode('setRange',n=ikFkSwitchSetRange,au=True)
+	source = ikfkSwitchCTRL + '.ikFk'
+	destination = setRangeNode + '.valueX'
+	maya.cmds.connectAttr(source, destination, force=True)
+	maya.cmds.setAttr(setRangeNode + '.oldMaxX', 10)
+	maya.cmds.setAttr(setRangeNode + '.maxX', 1)
+
+	destination = setRangeNode + '.valueY'
+	maya.cmds.connectAttr(source, destination, force=True)
+	maya.cmds.setAttr(setRangeNode + '.oldMaxY', 1)
+	maya.cmds.setAttr(setRangeNode + '.maxY', 10)
+
+	source = setRangeNode + '.outValueX'
+
+	for c in ikArray:
+		destination = c + '.visibilty'
+		maya.cmds.connectAttr(source, destination, force=True)
+
+	source = setRangeNode + '.outValueY'
+
+	for c in fkArray:
+		destination = c + '.visibilty'
+		maya.cmds.connectAttr(source, destination, force=True)
+
+def setColour(array,colour):
+	for a in array:
+		shape = getShapeNodes(a)
+		maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+		maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+
+fkArray = [fkmainCtrl,fkstartCtrl,fkmidCtrl,fkendCtrl,fkpvCtrl]	
+ikArray = [ikmainCtrl,ikstartCtrl,ikendCtrl,ikpvCtrl]
+
+setUpIkFfVisibilitySwitch(prefix,ikArray,fkArray,ikfkSwitchCTRL)
+
+setColour(ikArray,colour)
+setColour(fkArray,colour)
+
+
+
+	

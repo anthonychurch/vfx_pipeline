@@ -1,0 +1,8 @@
+//select the joints to be be stretchy individually
+string $selJoints[] = `ls -sl`;
+
+
+string $multiplierNode = shadingNode -asUtility multiplyDivide;
+rename "multiplyDivide1" "L_arm_multiplier_multiplyDivide";
+ 
+

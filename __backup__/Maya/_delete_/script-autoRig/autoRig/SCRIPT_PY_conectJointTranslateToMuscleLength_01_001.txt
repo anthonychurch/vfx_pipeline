@@ -1,0 +1,20 @@
+import maya.cmds
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+
+sel = maya.cmds.ls(selection=True)
+jointAimAxis = 'x'
+
+source = sel[0] + '.t' + jointAimAxis
+
+shape = getShapeNodes(sel[1])
+destination = shape[0][0] + '.length'
+maya.cmds.connectAttr(source, destination, force=True)

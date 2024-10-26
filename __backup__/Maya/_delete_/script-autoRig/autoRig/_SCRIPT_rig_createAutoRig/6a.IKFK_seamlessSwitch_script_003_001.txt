@@ -1,0 +1,98 @@
+string $sel[] = `ls -sl`;//0 = circle, 1 = box, 2 = IKFK CTRL
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+int $j;
+float $howManyTweenJoints = 3;
+
+string $IKFKparentConstraints[];
+
+
+
+string $sidePrefix = "L_";
+string $prefix = $sidePrefix + "arm_";
+string $IKprefix = $sidePrefix + "IK_";
+string $FKprefix = $sidePrefix + "FK_";
+
+
+string $handCTRL = $sidePrefix + "hand_CTRL";
+
+float $direction = 2;
+
+string $IKstartCTRL = $IKprefix + "shoulder_LOC";
+string $IKstartTracker = $IKprefix + "shoulder_tracking_LOC";
+string $IKmiddleTracker = $IKprefix + "elbow_tracking_LOC";
+string $IKendCTRL = $IKprefix + "wrist_CTRL";
+string $IKpoleVector = $IKprefix + "arm_poleVector_CTRL";
+string $IKFKswitch = $sidePrefix + "IKFK_arm_CTRL";
+
+string $masterCTRL = "MASTER_CTRL";
+
+string $clavicleCTRL = $sidePrefix + "clavicle_CTRL";
+
+string $FKstartCTRL = $FKprefix + "shoulder_CTRL";
+string $FKmiddleCTRL = $FKprefix + "elbow_CTRL";
+string $FKendTracker = $FKprefix + "wrist_tracking_LOC";
+string $FKpoleVectorTracker = $FKprefix + "arm_poleVector_tracking_LOC";
+
+string $FKarmScale = $FKprefix + "arm_scale_multiplyDivide1";
+
+"L_IK_arm_limit_multiplyDivide1"
+
+string $IKstartJoint = $IKprefix + "shoulder";
+string $IKmiddleJoint = $IKprefix + "elbow";
+string $IKendJoint = $IKprefix + "wrist";
+
+string $FKstartJoint = $FKprefix + "shoulder";
+string $FKmiddleJoint = $FKprefix + "elbow";
+string $FKendJoint = $FKprefix + "wrist";
+
+$IKstartCTRL = `substitute $IKFKswitch $sel[0] $IKstartCTRL`;
+$IKstartTracker = `substitute $IKFKswitch $sel[0] $IKstartTracker`;
+$IKmiddleTracker = `substitute $IKFKswitch $sel[0] $IKmiddleTracker`;
+$IKendCTRL = `substitute $IKFKswitch $sel[0] $IKendCTRL`;
+$IKpoleVector = `substitute $IKFKswitch $sel[0] $IKpoleVector`;
+
+$FKstartCTRL = `substitute $IKFKswitch $sel[0] $FKstartCTRL`;
+$FKmiddleCTRL = `substitute $IKFKswitch $sel[0] $FKmiddleCTRL`;
+$FKendTracker = `substitute $IKFKswitch $sel[0] $FKendTracker`;
+$FKpoleVectorTracker = `substitute $IKFKswitch $sel[0] $FKpoleVectorTracker`;
+
+
+
+
+int $time = `currentTime -q`;
+currentTime -edit ($time - 1);
+
+//FK to IK
+setKeyframe ($IKFKswitch + ".IkFk");
+setKeyframe ($IKendCTRL + ".translate");
+setKeyframe ($IKendCTRL + ".stiffness");
+setKeyframe ($IKendCTRL + ".stretchIK");
+setKeyframe ($IKendCTRL + ".autoStretchIK");
+setKeyframe ($IKendCTRL + ".isolate");
+setKeyframe ($IKstartCTRL + ".translate");
+setKeyframe ($IKpoleVector + ".translate");
+
+setKeyframe ($FKmiddleCTRL + ".stretchFK");
+
+
+currentTime -edit $time;
+
+float $shoulderRotate[] = `xform -q -ws -ro $IKstartJoint`;
+float $elbowRotate[] = `xform -q -ws -ro $IKmiddleJoint`;
+
+select $FKstartCTRL;
+xform -ws -ro $shoulderRotate[0] $shoulderRotate[1] $shoulderRotate[2];
+select $FKmiddleCTRL;
+xform -ws -ro $elbowRotate[0] $elbowRotate[1] $elbowRotate[2];
+
+setKeyframe ($FKstartCTRL + ".rotate");
+setKeyframe ($FKmiddleCTRL + ".rotate");
+
+setAttr 
+setKeyframe ($FKmiddleCTRL + ".stretchFK");
+setKeyframe ($IKFKswitch + ".IkFk");
+
+

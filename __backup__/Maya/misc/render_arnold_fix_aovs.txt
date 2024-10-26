@@ -1,0 +1,17 @@
+import maya.cmds
+
+#shit = maya.cmds.createNode('cunt', )
+#shit = maya.cmds.shadingNode('lambert',asShader=True )
+sel = maya.cmds.ls(selection=True)
+
+for s in sel:
+    #shader = maya.cmds.shadingNode('surfaceShader', asShader = True, name = name)
+    shadingGroup = maya.cmds.sets(s, renderable = True, noSurfaceShader = True, empty = True, name = s+"_SG")
+    maya.cmds.connectAttr(s+".outColor", shadingGroup+".surfaceShader", force = True)
+    print s
+
+#name = 'shit'
+
+#shader = maya.cmds.shadingNode('surfaceShader', asShader = True, name = name)
+#shadingGroup = maya.cmds.sets(shader, renderable = True, noSurfaceShader = True, empty = True, name = name+"_SG")
+#maya.cmds.connectAttr(shader+".outColor", shadingGroup+".surfaceShader", force = True)

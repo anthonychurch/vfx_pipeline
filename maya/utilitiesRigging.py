@@ -15,6 +15,80 @@ def getVersion():
 	print ("Imported Utilities Rigging Module " + ver)
 
 
+	
+	
+	
+"""
+USAGE :  TODO
+
+REQUIRES:
+1. NA
+
+INPUTS :
+1. jointArray = TODO
+
+OUTPUT :
+1. returnArray = TODO
+
+NOTES : 
+1. NA
+"""			
+def addStiffness2(prefix,jointArray,ctrl):
+	stiffnessAttr = 'stiffness'
+	mainStiffness = ctrl + '.' + stiffnessAttr
+	print('mainStiffness = ' + str(mainStiffness))
+
+	doesStiffnessExist = maya.cmds.attributeQuery( stiffnessAttr, node=ctrl, exists=True )
+	if( doesStiffnessExist != True):
+		maya.cmds.addAttr(ctrl, longName='stiffness', attributeType='double', min=0, max=10, dv=0 )
+		maya.cmds.setAttr(mainStiffness,edit=True, keyable=True)
+
+	print('len(jointArray) = ' + str(len(jointArray)))
+	if(len(jointArray) != 0):
+		stretchNormaliseNode = prefix + 'stiffnessNormalise_setRange'
+		conn = maya.cmds.listConnections( mainStiffness, d=True, s=False, t='setRange' )
+		print('conn = ' + str(conn))
+		setRangeNode = ''
+		if( conn == None ):
+			setRangeNode = maya.cmds.shadingNode('setRange',n=stretchNormaliseNode,au=True)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		elif( len(conn) == 1):
+			setRangeNode = conn[0]
+			print('setRangeNode = ' + str(setRangeNode))
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		else:
+			print('ERROR :: ' + mainStiffness + ' has too many setRange nodes connected to it!!!')
+
+		socketAttribute1 = '.valueY'
+		connectorAttribute1 = '.stiffness'
+
+		connectorAttribute2 = '.outValueY'
+		socketAttribute2 = '.stiffness'
+
+		socket1 = setRangeNode + socketAttribute1
+		connector1 = mainStiffness
+		maya.cmds.connectAttr(connector1, socket1, force=True)
+
+		for i in range(0, len(jointArray), 1):
+			connector2 = setRangeNode + connectorAttribute2
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'X')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'Y')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+
+			socket2 = jointArray[i] + (socketAttribute2 + 'Z')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	else:
+		print('No Tween Joints to connect the Stiffness attribute')
+		
+		
+		
+		
+		
 """
 USAGE :  TODO
 
@@ -2290,4 +2364,4 @@ def setUpWingFlex(ctrlArray,locatorArray,flexAxis):
 			
 	return returnArray
 
-print("Line 2144 :: Imported the utilitiesRigging Module!!!")	
+print("Line 2267:: Imported the utilitiesRigging Module!!!")	

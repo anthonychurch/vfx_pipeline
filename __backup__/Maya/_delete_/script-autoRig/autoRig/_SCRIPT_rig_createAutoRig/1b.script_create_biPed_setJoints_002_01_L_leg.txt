@@ -1,0 +1,178 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET J
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the chain starting from the start to the end 
+//2. mirror joints to right ahnd side
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+int $j;
+float $howManyTweenJoints = 3;
+
+
+
+string $sidePrefix = "L_";
+
+string $prefix = $sidePrefix + "leg_";
+
+string $startJoint = $sidePrefix + "hip";
+string $midJoint = $sidePrefix + "knee";
+string $endJoint = $sidePrefix + "ankle";
+
+string $tweenJoint1 = $sidePrefix + "thigh";
+string $tweenJoint2 = $sidePrefix + "shin";
+
+string $previousJoint = $startJoint;
+
+string $jointCurve1 = $prefix + "jointCurve1";
+string $jointCurve2 = $prefix + "jointCurve2";
+
+//unparent all the joints
+//for($i = 0; $i < $howManyJoints; $i++){
+//	parent -w $sel[$i];
+//}
+
+string $startLoc[] = `spaceLocator -n ($prefix + "startLocator") -p 0 0 0`;
+string $midLoc[] = `spaceLocator -n ($prefix + "midLocator") -p 0 0 0`;
+string $endLoc[] = `spaceLocator -n ($prefix + "endLocator") -p 0 0 0`;
+
+string $startParent[] = `parentConstraint $startJoint $startLoc[0]`;
+string $midParent[] = `parentConstraint $midJoint $midLoc[0]`;
+string $endParent[] = `parentConstraint $endJoint $endLoc[0]`;
+
+float $startJointPosX = `getAttr ($startLoc[0] + ".translateX")`;
+float $startJointPosY = `getAttr ($startLoc[0] + ".translateY")`;
+float $startJointPosZ = `getAttr ($startLoc[0] + ".translateZ")`;
+float $midJointPosX = `getAttr ($midLoc[0] + ".translateX")`;
+float $midJointPosY = `getAttr ($midLoc[0] + ".translateY")`;
+float $midJointPosZ = `getAttr ($midLoc[0] + ".translateZ")`;
+float $endJointPosX = `getAttr ($endLoc[0] + ".translateX")`;
+float $endJointPosY = `getAttr ($endLoc[0] + ".translateY")`;
+float $endJointPosZ = `getAttr ($endLoc[0] + ".translateZ")`;
+
+
+string $distanceNode1 = `distanceDimension  -sp $startJointPosX $startJointPosY $startJointPosZ -ep $midJointPosX $midJointPosY $midJointPosZ` ;
+string $distanceNode2 = `distanceDimension  -sp $midJointPosX $midJointPosY $midJointPosZ -ep $endJointPosX $endJointPosY $endJointPosZ` ;
+string $distanceNode3 = `distanceDimension  -sp $startJointPosX $startJointPosY $startJointPosZ -ep $endJointPosX $endJointPosY $endJointPosZ` ;
+
+float $half = $howManyJoints / 2;
+float $distanceDim1 = `getAttr ($distanceNode1 + ".distance")`;
+float $distanceDim2 = `getAttr ($distanceNode2 + ".distance")`;
+
+float $divide1 =  1 / ($howManyTweenJoints + 1);
+//print ($divide1 + ";     ");
+float $divide2 =  1 / ($howManyTweenJoints + 1);
+//print ($divide2 + ";     ");
+
+
+float $step = 0;
+
+//create curve1 to add tween joints********************************************START
+string $makeJointCurve1 = `curve -d 1 -p $startJointPosX $startJointPosY $startJointPosZ -p $midJointPosX $midJointPosY $midJointPosZ` ;
+rename $makeJointCurve1 $jointCurve1;
+for($i = 0; $i < ($howManyTweenJoints + 2); $i++){
+	string $Loc[] = `spaceLocator -n ($prefix + "temp1" + "LOC") -p 0 0 0`;
+	
+	string $path = `pathAnimation $jointCurve1 $Loc[0]`;
+	//pathAnimation -edit -fractionMode true -follow true -followAxis x -upAxis y -worldUpType "vector" -worldUpVector 0 1 0 -inverseUp false -inverseFront false -bank false $path;
+	string $renamePath = `rename $path ($Loc[0] + "_motionPath")`;
+		
+	disconnectAttr ($path + "_uValue.output") ($renamePath + ".uValue");
+	delete ($path + "_uValue");
+	setAttr ($renamePath + ".uValue") $step;
+	//delete $renamePath;
+
+
+	$step = $step + $divide1;
+	print ($step + ";     ");
+
+}
+
+
+float $step = 0;
+
+//create curve1 to add tween joints********************************************START
+string $makeJointCurve2 = `curve -d 1 -p $midJointPosX $midJointPosY $midJointPosZ -p $endJointPosX $endJointPosY $endJointPosZ` ;
+rename $makeJointCurve2 $jointCurve2;
+for($i = 0; $i < ($howManyTweenJoints + 2); $i++){
+	string $Loc[] = `spaceLocator -n ($prefix + "temp2" + "LOC") -p 0 0 0`;
+	
+	string $path = `pathAnimation $jointCurve2 $Loc[0]`;
+	//pathAnimation -edit -fractionMode true -follow true -followAxis x -upAxis y -worldUpType "vector" -worldUpVector 0 1 0 -inverseUp false -inverseFront false -bank false $path;
+	string $renamePath = `rename $path ($Loc[0] + "_motionPath")`;
+		
+	disconnectAttr ($path + "_uValue.output") ($renamePath + ".uValue");
+	delete ($path + "_uValue");
+	setAttr ($renamePath + ".uValue") $step;
+	//delete $renamePath;
+
+
+	$step = $step + $divide2;
+	print ($step + ";     ");
+}
+
+
+float $jointRadius = `getAttr ($startJoint + ".radius")`;
+
+$divide1 =  $distanceDim1 / ($howManyTweenJoints + 1);
+$divide2 =  $distanceDim2 / ($howManyTweenJoints + 1);
+
+
+int $increment = 0;
+
+//set up the motion path setup for the first half
+for($i = 0; $i < $howManyTweenJoints; $i++){
+	string $insertJoint = `insertJoint $previousJoint`;
+	setAttr ($insertJoint + ".radius") $jointRadius;
+
+	//string $aimLocator[] = `aimConstraint  $midJoint $insertJoint`;
+	//delete $aimLocator[0];
+	string $constainLocator[] = `pointConstraint ($prefix + "temp1" + "LOC" + ($i + 1)) $insertJoint`;
+	delete $constainLocator[0];
+	
+	string $renameJoint = `rename $insertJoint ($tweenJoint1 + ($i + 1))`;
+	$previousJoint = $renameJoint;
+}
+
+
+string $constainLocator[] = `pointConstraint ($prefix + "temp1" + "LOC" + ($howManyTweenJoints + 1)) $midJoint`;
+delete $constainLocator[0];
+
+
+
+$previousJoint = $midJoint;
+
+//set up the motion path setup for the first half
+for($i = 0; $i < $howManyTweenJoints; $i++){
+	string $insertJoint = `insertJoint $previousJoint`;
+	setAttr ($insertJoint + ".radius") $jointRadius;
+	
+	//string $aimLocator[] = `aimConstraint  $endJoint $insertJoint`;
+	//delete $aimLocator[0];
+	string $constainLocator[] = `pointConstraint ($prefix + "temp2" + "LOC" + ($i + 1)) $insertJoint`;
+	delete $constainLocator[0];
+	
+	string $renameJoint = `rename $insertJoint ($tweenJoint2 + ($i + 1))`;
+	$previousJoint = $renameJoint;
+}
+
+string $constainLocator[] = `pointConstraint ($prefix + "temp2" + "LOC" + ($howManyTweenJoints + 1)) $endJoint`;
+delete $constainLocator[0];
+
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

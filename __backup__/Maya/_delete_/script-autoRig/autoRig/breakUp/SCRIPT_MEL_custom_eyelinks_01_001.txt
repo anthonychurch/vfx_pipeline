@@ -1,0 +1,34 @@
+//L_ CONNECT UP EYE CONTROLS TO BLEND 1 
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors1.color2R;
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors1.color2G;
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors1.color2B;
+
+connectAttr -force L_eye_CTRL.L_Eye_Up_1 L_eye_up_blendColors1.color1R;
+connectAttr -force L_eye_CTRL.L_Eye_Up_2 L_eye_up_blendColors1.color1G;
+connectAttr -force L_eye_CTRL.L_Eye_Up_3 L_eye_up_blendColors1.color1B;
+
+//L_ CONNECT UP EYE CONTROLS TO BLEND 2 
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors2.color2R;
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors2.color2G;
+connectAttr -force L_eye_CTRL.L_Eye_Up_MAIN L_eye_up_blendColors2.color2B;
+
+connectAttr -force L_eye_CTRL.L_Eye_Up_4 L_eye_up_blendColors2.color1R;
+connectAttr -force L_eye_CTRL.L_Eye_Up_5 L_eye_up_blendColors2.color1G;
+
+
+//L_ CONNECT LOW EYE CONTROLS TO BLEND 1 
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors1.color2R;
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors1.color2G;
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors1.color2B;
+
+connectAttr -force L_eye_CTRL.L_Eye_Low_1 L_eye_low_blendColors1.color1R;
+connectAttr -force L_eye_CTRL.L_Eye_Low_2 L_eye_low_blendColors1.color1G;
+connectAttr -force L_eye_CTRL.L_Eye_Low_3 L_eye_low_blendColors1.color1B;
+
+//L_ CONNECT LOW EYE CONTROLS TO BLEND 2
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors2.color2R;
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors2.color2G;
+connectAttr -force L_eye_CTRL.L_Eye_Low_MAIN L_eye_low_blendColors2.color2B;
+
+connectAttr -force L_eye_CTRL.L_Eye_Low_4 L_eye_low_blendColors2.color1R;
+connectAttr -force L_eye_CTRL.L_Eye_Low_5 L_eye_low_blendColors2.color1G;

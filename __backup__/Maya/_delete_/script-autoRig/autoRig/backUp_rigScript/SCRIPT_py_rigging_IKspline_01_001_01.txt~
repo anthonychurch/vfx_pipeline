@@ -1,0 +1,103 @@
+#START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#create stretchy SPINE IK connections================================================================================================================================
+#INSTRUCTIONS;
+#1.Select all the joints that make up the spine Ik group except the very first joint as this is not be stretched and then select the spline IK curve LAST
+
+
+
+#START OF SCRIPT
+selectedJoints = maya.cmds.ls(selection=True,tail=1) 
+last = maya.cmds.ls(selection=True,tail=1) 
+howManyJoints = len(selectedJoints) - 1
+howManyNodes = ceil(howManyJoints / 3)
+#print howManyNodes;
+i
+j
+whichJoint
+break = 0
+#int $countJoints = 1
+
+spineNormaliseNode = 'spine_normalize_multiplyDivide1'
+spineMultiplyNode = 'spine_multiplier_multiplyDivide'
+
+#START////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+#CREATE CURVE INFO AND MULTIPLYDIVIDE NODES
+curveInfoNode = maya.cmds.arclen(last[0]', ch=True)
+multiplierNode = maya.cmds.shadingNode(n='spine_normalize_multiplyDivide1',au='multiplyDivide')
+
+spineNormaliseNode = multiplierNode #ENSURE THAT THERE CONTINUITY THROUGH OUT THE SCRIPT
+
+#CONNECT ARCLENGTH TO INPUT1X 
+socketAttribute = '.input1X'
+connectorAttribute = '.arcLength'
+
+connector = curveInfoNode + connectorAttribute
+socket = multiplierNode + socketAttribute
+
+maya.cmds.connectAttr(connector, socket, force=True)
+
+#SET INPUT2X TO ARCLENGTH VALUE AND SET MULTIPLEDIVED NODES OPERATION TO DIVIDE
+socketAttribute = '.input2X'
+
+maya.cmds.setAttr(multiplierNode + '.operation', 2)
+arcLength = maya.cmds.getAttr(connector)
+
+maya.cmds.setAttr(multiplierNode + socketAttribute, arcLength)
+
+
+maya.cmds.rename(curveInfoNode, 'spine_curveInfo1')
+
+
+#END/////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+
+
+#START///////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+#CREATE MULTIPLYDIVIDE NODES 
+for i in range(0,howManyNodes,1):
+	multiplierNode = maya.cmds.shadingNode(n=spineMultiplyNode + '1',au='multiplyDivide')
+
+connectorAttribute1 = '.outputX' #change this variable
+socketAttribute1 = '.input' #change this variable
+connector1 = spineNormaliseNode + connectorAttribute1;
+
+connectorAttribute2 = '.output'
+socketAttribute2
+whichJoint = 0
+
+#CONNECT THE NORMALISE NODE TO THE MULTIPLYDIVIDE NODES, COPY SPINE JOINT TRANSLATEX TO MULTIPLYDIVIDE NODES INPUT 1XYZ ATTRIBUTES AND 
+#CONNECT MULTIPLYDIVIDE NODES OUTPUT XYZ TO SPINE JOINT TRANSLATEX
+for i in range(0,howManyNodes,1):
+	multiply = i + 1
+	
+	whichAxis = [' ', 'X', 'Y', 'Z']
+	for j in range(0,4,1):
+		if(break == 0):
+			socket1 = spineMultiplyNode + multiply + (socketAttribute1 + '2' + whichAxis[j])
+			maya.cmds.connectAttr(connector1, socket1, force=True)
+					
+			getAttr = maya.cmds.getAttr(selectedJoints[whichJoint] + '.tx');
+			setAttr = maya.cmds.setAttr(spineMultiplyNode + multiply + (socketAttribute1 + '1' + whichAxis[j]), getAttr)
+		
+			connector2 = spineMultiplyNode + multiply + (connectorAttribute2 + whichAxis[j])
+			socket2 = (selectedJoints[whichJoint] + '.tx')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+			
+			whichJoint = whichJoint + 1
+			print ('whichJoint = ' + str(whichJoint))
+			print ('howManyJoints = ' + str(howManyJoints))
+
+			#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+			if(whichJoint == howManyJoints):
+				break = 1
+
+
+
+
+//END/////////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+//================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++;
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

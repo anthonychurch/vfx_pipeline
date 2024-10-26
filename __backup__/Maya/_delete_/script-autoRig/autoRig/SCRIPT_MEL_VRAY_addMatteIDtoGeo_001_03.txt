@@ -1,0 +1,24 @@
+string $sel[] = `ls -sl`;
+float $count =  size($sel);
+//print $count;
+
+for($i = 0; $i < $count; $i++)
+{
+    //Get shape
+    string $shape[] = `listRelatives -s $sel[$i]`;
+    //print $shape[0];
+    int $size = size($shape[0]);
+    //print $size;
+
+    if($size > 0)
+        {
+            //Get Parent
+            //string $parent[] = `listRelatives -parent $sel[$i]`;
+            //print $parent[0];
+            //string $parentChild = "|"+$parent[0]+"|"+$sel[$i]+"|"+$shape[0];
+            //print $parentChild;
+            vray addAttributesFromGroup $shape[0] vray_objectID 1;
+            string $s = $shape[0] + ".vrayObjectID";
+            setAttr $s 2;
+        }
+}

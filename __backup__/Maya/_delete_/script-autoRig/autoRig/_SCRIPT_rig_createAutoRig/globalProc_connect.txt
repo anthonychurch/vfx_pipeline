@@ -1,0 +1,7 @@
+string $sel[] = `ls -sl`;
+
+global proc connect(string $connection, string $connectionAttr, string $socket, string $socketAttr){
+	connectAttr -force ($connection + "." + $connectionAttr)  ($socket + "." + $socketAttr);
+} 
+
+connect("L_IK_leg_poleVector_CTRL", "twist", "L_IK_leg_ikHandle1", "twist");

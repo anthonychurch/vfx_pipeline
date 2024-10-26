@@ -1,0 +1,80 @@
+import maya.cmds
+import random
+import math
+
+
+def setUpShoulderRig(prefix,name,jointArray,pitchAxis,rotAxis,rollAxis,ctrl):
+	returnArray = []
+
+	name = prefix + name + 'rotate_LOC'
+	createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+	whichJoint = jointArray[0]
+	constainLocator = maya.cmds.parentConstraint(jointArray[0], createLocator, weight=1 )
+	maya.cmds.delete(constainLocator)
+	returnArray.append(createLocator)
+	destination = createLocator + '.r' + pitchAxis
+	source = ctrl + '.r' + pitchAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	destination = createLocator + '.r' + rotAxis
+	source = ctrl + '.r' + rotAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	destination = createLocator + '.r' + rollAxis
+	source = ctrl + '.r' + rollAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	previousLocator = createLocator
+
+	name = prefix + jointArray[1] + 'track_LOC'
+	createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+	whichJoint = jointArray[1]
+	constainLocator = maya.cmds.parentConstraint(jointArray[1], createLocator, weight=1 )
+	maya.cmds.delete(constainLocator)
+	returnArray.append(createLocator)
+	maya.cmds.parent(createLocator,previousLocator)
+	previousLocator = createLocator
+
+	maya.cmds.pointConstraint(previousLocator, ctrl, weight=1 )
+
+	return returnArray
+
+
+
+sidePrefix = 'L_'
+jointType = 'IK_'
+limbTypeName = 'arm_'
+prefix = sidePrefix + jointType + limbTypeName
+pvDistance = 0
+howManyTweenJoints = 0
+name = 'shoulder_'
+
+###############################################################################################
+#     SELECT:	
+#	1. SELECT MIDDLE SHOULER JOINT 
+#	2. SELECT SIDE SHOULDER JOINT
+#	3. SELECT SHOULDER CONTROL
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+ctrl = maya.cmds.ls(selection=True,tail=1)[0]
+ikFootJoints = []
+for j in range(0,len(sel)-1,1):
+	ikFootJoints.append(sel[j])
+
+
+
+jointAimAxis = 'z'#['x','y','z']
+jointUpAxis = 'x'
+pitchAxis = jointUpAxis # NORMALLY 'X'
+rotateAxis = 'y' # NORMALLY 'Y'
+rollAxis = jointAimAxis # NORMALLY 'Z'
+
+if(pitchAxis == 'z'):
+	if(rotateAxis == 'y'):
+		rollAxis = 'x'
+	else:
+		rollAxis = 'y'
+elif(pitchAxis == 'y'): 
+	if(rotateAxis == 'x'):
+		rollAxis = 'z'
+	else:
+		rollAxis = 'x'
+
+setUpShoulderRig(prefix,name,ikFootJoints,pitchAxis,rotateAxis,rollAxis,ctrl)

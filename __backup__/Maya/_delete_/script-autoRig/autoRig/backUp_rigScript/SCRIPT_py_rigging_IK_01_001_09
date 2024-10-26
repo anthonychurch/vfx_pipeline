@@ -1,0 +1,145 @@
+#create IK
+#set up polevector control
+#
+
+import maya.cmds
+import random
+import math
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection(array,breakerObj):
+	newArray = []
+	brake = False
+	for n in array:
+		if(brake == False):
+			newArray.append(n)
+			if(n == breakerObj):
+				#print n
+				brake = True
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,group,type):
+	newArray = []
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.parent(duplicate, w=True)
+	howManyJoints = len(jointArray)
+	if(type == 'bipedLeg'):
+		howManyJoints = len(jointArray) + 2
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		if(maya.cmds.objExists(child[0])) & (len(child) == 1):
+			duplicate = child[0]
+		else:
+			print('ERROR: ' + str(j) + ' has a branch of Multiple Joints')
+	
+	if(type == 'bipedLeg'):
+		last = newArray[len(newArray)+1]
+		if( maya.cmds.objExists(maya.cmds.listRelatives(last,c=True,f=True)[0]) ):
+		g = maya.cmds.listRelatives(last,c=True,f=True)
+			for n in g:
+				maya.cmds.delete(n)
+	else:
+		last = newArray[len(newArray)-1]
+		if( maya.cmds.objExists(maya.cmds.listRelatives(last,c=True,f=True)[0]) ):
+			maya.cmds.delete(maya.cmds.listRelatives(last,c=True,f=True)[0])
+		
+	maya.cmds.parent(newArray[0],group[len(group)-1])
+	return newArray
+	
+def createIKhandles(prefix,type,startJoint,endJoint,pvCtrl,stretchy):
+	ikh = prefix + '_ikHandle'
+	maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+	if(type == 'ikRPsolver'):
+		maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	if(stretchy):
+		print 'Need to make IK stretch joints'
+	#parent PV ctrl
+	#PARENT CONSTRAIN JOINTS
+
+
+
+		
+#'kSplineSolver'   'ikSCsolver'   'ikRPsolver'
+sidePrefix = 'L_'
+upAxis = 'z'
+howManyTweenJoints = 3
+howManyKeyJoints = 3
+jointType = 'IK_'
+limbType = 'bipedLeg' #else 'armOrQuadLeg'
+prefix = sidePrefix + jointType
+pv = 'L_IK_leg_poleVector_CTRL'
+kneeJoint = 'L_knee'
+limbTypeName = 'leg_'
+groups = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+skeletonCtrlGrp = groups[3] 
+sel = maya.cmds.ls(selection = True)
+startJoint = sel[0]
+endJoint = sel[1]
+maya.cmds.select(sel[0])
+maya.cmds.select(hierarchy = True)
+selHi = maya.cmds.ls(selection = True)
+selectedJoints = filterSelection(selHi,endJoint)
+maya.cmds.select( clear=True )
+
+setUpGrp(groups)
+setupPolVector(pv,kneeJoint,12,upAxis)
+ikJoints = createIKjoints(selectedJoints,sidePrefix,jointType,groups,True)
+createIKhandles( prefix + limbTypeName,'ikRPsolver', ikJoints[0], ikJoints[len(ikJoints)-1],pv,limbType)
+
+
+#if(type == 'bipedLeg'):
+	#print 'Need to create ikSC foot handles
+	#IKSC for foot
+	#\
+	createIKhandles(prefix,'ikSCsolver',ankle,foot,'',False)
+
+
+
+
+
+
+

@@ -1,0 +1,357 @@
+#create IK
+#set up polevector control
+#
+
+import maya.cmds
+import random
+import math
+
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def findNameSufix(name,token):
+	prefix = len(name) - len(token)
+	print('prefix = ' + str(prefix))
+	newName = name[prefix:len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection(array,breakerObj):
+	newArray = []
+	brake = False
+	for n in array:
+		if(brake == False):
+			newArray.append(n)
+			if(n == breakerObj):
+				#print n
+				brake = True
+	return newArray
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,group):
+	print('jointArray = ' + str(jointArray))
+	newArray = []
+	#brake = False
+	endJoint = jointArray[len(jointArray)-1]
+	print('endJoint = ' + str(endJoint))
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicate, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicate, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		print('duplicate = ' + str(duplicate))
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		if(child != None):
+			if(len(child) == 1):
+				duplicate = child[0]
+			else:
+				print('child = ' + str(child))
+				print(str(j) + ' has a branch of Multiple Joints')
+				for c in child:
+					print('c = ' + str(c))
+					prefixToIgnore = c.rfind('|')
+					test = c[prefixToIgnore+1:len(c)]
+					print('test = ' + str(test))
+					if(test == endJoint):
+						print('c has the end joint = ' + str(c))
+						duplicate = c
+						print('duplicate = ' + str(duplicate))
+					else:
+						gc = maya.cmds.listRelatives(c,c=True,ad=True,f=True)
+						print('gc = ' + str(gc))
+						if(gc != None):
+							for g in gc:
+								prefixToIgnore = g.rfind('|')
+								test = g[prefixToIgnore+1:len(g)]
+								print('test = ' + str(test))
+								if(test == endJoint):
+									print('c has the end joint = ' + str(c))
+									duplicate = c
+									print('duplicate = ' + str(duplicate))
+						else:	
+							print('deleting ' + str(c))
+							maya.cmds.delete(c)
+
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],group[len(group)-1])
+	return newArray
+	
+def createIKhandles(prefix,limbType,type,startJoint,endJoint,pvCtrl,stretchy):
+	ikh = prefix + limbType + 'ikHandle'
+	maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+	if(type == 'ikRPsolver'):
+		maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	if(stretchy == True):
+		print 'Need to make IK stretch joints'
+
+def connectFKControls(hipCTRL,kneeCTRL,footCTRL,toeCTRL,hipJoint,kneeJoint,footJoint,toeJoint,aimAxix):
+	maya.cmds.parentConstraint(hipJoint,hipCTRL,mo=True)
+	maya.cmds.pointConstraint(kneeJoint,kneeCTRL,mo=True)
+	maya.cmds.pointConstraint(footJoint,footCTRL,mo=True)
+	maya.cmds.pointConstraint(toeJoint,toeCTRL,mo=True)
+
+	#if(aimAxix == 'x'):
+	#maya.cmds.connectAttr(str(kneeCTRL) + '.rotate',str(kneeJoint) + '.rotate')
+	maya.cmds.connectAttr(str(kneeCTRL) + '.rx',str(kneeJoint) + '.ry')
+	maya.cmds.connectAttr(str(kneeCTRL) + '.ry',str(kneeJoint) + '.rx')
+	maya.cmds.connectAttr(str(kneeCTRL) + '.rz',str(kneeJoint) + '.rz')
+
+	#maya.cmds.connectAttr(str(footCTRL) + '.rotate',str(footJoint) + '.rotate')
+	maya.cmds.connectAttr(str(footCTRL) + '.rx',str(footJoint) + '.ry')
+	maya.cmds.connectAttr(str(footCTRL) + '.ry',str(footJoint) + '.rx')
+	maya.cmds.connectAttr(str(footCTRL) + '.rz',str(footJoint) + '.rz')
+	
+	#maya.cmds.connectAttr(str(toeCTRL) + '.rotate',str(toeCTRL) + '.rotate')
+	maya.cmds.connectAttr(str(toeCTRL) + '.rx',str(toeJoint) + '.ry')
+	maya.cmds.connectAttr(str(toeCTRL) + '.ry',str(toeJoint) + '.rx')
+	maya.cmds.connectAttr(str(toeCTRL) + '.rz',str(toeJoint) + '.rz')
+	
+	
+
+def setUpFKstretch(prefix,jointAimAxis,limbTypeName,jointArray,howManyNodes,mainCtrl,startCTRL,endCTRL):
+	#select second and last joint of Ik Chain, then the ctrl
+	howManyJoints = len(jointArray)
+	
+	#defaultAttr = '.default' #must be boolean
+	stretchAttr = '.stretchFK'
+
+	stretchNormaliseNode = prefix + 'stretchNormalise_setRange'
+	#FKPlusNode = prefix + 'default_plusMinusAverage'
+	FKNormaliseNode = prefix + 'scale_multiplyDivide'
+	
+	startJoint = jointArray[0]
+	print('startJoint = ' + str(startJoint))
+	endJoint = jointArray[len(jointArray)-1]
+	print('endJoint = ' + str(endJoint))
+
+	#START///////////////////////////////////CREATE SETRANGE, MULTIPLYDIVIDE NODES AND 
+	#START///////////////////////////////////FOR ALL THE FK JOINTS. GET EACH FK JOINT TX VALUE 
+	#START///////////////////////////////////
+	
+	#create set range node to normalise the stretch FK attribute*********************START**********create set range node to normalise the stretch FK attribute
+	setRangeNode = maya.cmds.shadingNode('setRange',n=stretchNormaliseNode,au=True)
+	connector = mainCtrl + stretchAttr
+	socket = setRangeNode + '.valueX'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(setRangeNode + '.oldMaxX', 1000)
+	maya.cmds.setAttr(setRangeNode + '.maxX', 100)
+	#create set range node to normalise the stretch FK attribute*********************END**********create set range 
+	
+	#IKConditionNode = conditionNode
+	#IKNormaliseNode = normaliseNode
+	#IKAutoStretchNode = autoStretch
+	#IKStretchNode = stretch;
+	#stretchNormaliseNode = setRangeNode
+
+	#END///////////////////////////////////CREATE SETRANGE, MULTIPLYDIVIDE NODES AND 
+	#END///////////////////////////////////FOR ALL THE FK JOINTS. GET EACH FK JOINT TX VALUE 
+	#END///////////////////////////////////
+
+	#START/////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO IK JOINT TRANSLATEX
+	multiplierNodes = []
+	for i in range(0,howManyNodes,1):
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide',n=FKNormaliseNode + '1',au=True)
+		#multiplierNodes[i] = multiplierNode
+		multiplierNodes.append(multiplierNode)
+
+	#END///////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO IK JOINT TRANSLATEX
+
+	#START/////////////////////////////////////////////////////////////CONNECT THE CONDITION NODE TO MULTIPLIER NODES READY TO BE CONNECT TO IK JOINT TRANSLATEX
+	connectorAttribute1 = '.valueX'
+	socketAttribute1 = '.input' 
+	connector1 = stretchNormaliseNode + connectorAttribute1
+
+	connectorAttribute2 = '.output'
+
+	whichJoint = 1 #start with the second joint
+	brake = 0
+
+	#CONNECT SETRANGE NODE TO MULYIPLIER NODES THEN TO INDIVIDUAL JOINTS
+	for i in range(0,howManyNodes,1):
+		multiply = i + 1 #use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+		whichAxis = [' ', 'X', 'Y', 'Z']
+		for j in range(1,4,1):
+			if(brake == 0):
+				socket1 = multiplierNodes[i] + (socketAttribute1 + '1' + whichAxis[j])
+				maya.cmds.connectAttr(connector1, socket1, force=True)
+		
+				getAttr = maya.cmds.getAttr(jointArray[whichJoint] + '.t' + jointAimAxis)
+				setAttr = maya.cmds.setAttr(multiplierNodes[i] + (socketAttribute1 + '2' + whichAxis[j]), getAttr)
+		
+				#connector2 = IKMultiplierNode + str(multiply) + (connectorAttribute2 + whichAxis[j])
+				connector2 =  multiplierNodes[i] + (connectorAttribute2 + whichAxis[j])
+				print ('connector2 = ' + str(connector2))
+				socket2 = (jointArray[whichJoint] + '.t' + jointAimAxis)
+				print ('socket2 = ' + str(socket2))
+				maya.cmds.connectAttr(connector2, socket2, force=True)
+
+				whichJoint = whichJoint + 1
+	
+				print ('whichJoint = ' + str(whichJoint))
+				print ('howManyJoints = ' + str(howManyJoints))
+
+				#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+				if(whichJoint == howManyJoints):
+					brake = 1
+	
+		print ('i = ' + str(i) )
+
+	#END//////////////////////////////////////////////////////////////CONNECT THE CONDITION NODE TO MULTIPLIER NODES READY TO BE CONNECT TO IK JOINT TRANSLATEX
+	#================================================================================================================================
+	#END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+def masterCreateFK(selection,sidePrefix,upAxis,jointAimAxis,jointType,howwManyKeyJoints,limbType,limbTypeName,ctrlAimAxis,mainCTRL,startCTRL,midCTRL,endCTRL,pvCTRL):
+	prefix = sidePrefix + jointType
+
+	groupsCTRL = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+	groupsDIM = ['char_GRP','DO_NOT_ALTER_GRP','dimension_GRP']
+	skeletonCtrlGrp = groupsCTRL[3]
+
+	#if(len(selection) > 2):
+	#	toeJoint = selection[2]
+	toeJoint = sidePrefix + 'toe'
+
+	maya.cmds.select(selection[0])
+	maya.cmds.select(hierarchy = True)
+	selHi = maya.cmds.ls(selection = True)
+	if(limbTypeName == 'leg_'):
+		if(len(selection) > 2):
+			if(jointType == 'SPL_'):
+				selectedJoints = filterSelection2(selHi,endJoint,1)
+				#maya.cmds.delete(selHi[len(selectedJoints)+1])
+			else:
+				selectedJoints = filterSelection2(selHi,toeJoint,1)
+
+		else:
+			print('ERROR :: No toe joint selected')
+	else:
+		selectedJoints = filterSelection2(selHi,endJoint,1)
+	print('selectedJoints = ' + str(selectedJoints))
+	
+	maya.cmds.select(clear=True)
+
+	setUpGrp(groupsCTRL)
+	setupPolVector(pvCTRL,midJoint,0,upAxis)
+
+	#ikJoints are only the joints that make up the IKPhandle chain
+	fkJoints = createIKjoints(selectedJoints,sidePrefix,jointType,groupsCTRL)
+	print('fkJoints = ' + str(fkJoints))
+	ej = prefix + findNamePrefix(endJoint,sidePrefix)
+	print('ej = ' + str(ej))
+
+	prefix = sidePrefix + jointType# + limbTypeName
+	#print('ikendJoint = ' + str(ikendJoint))
+	fkJointsFiltered = filterSelection2(fkJoints,ej,1)
+	print('fkJointsFiltered = ' + str(fkJointsFiltered))
+	print('len(fkJointsFiltered) = ' + str(len(fkJointsFiltered)))
+	howManyNodes = int(math.ceil(len(fkJointsFiltered) / 3)) #This divided by three because of X,Y,Z
+	print('howManyNodes = ' + str(howManyNodes))
+	setUpFKstretch(prefix,jointAimAxis,limbTypeName,fkJointsFiltered,howManyNodes,mainCTRL,startCTRL,endCTRL)
+	if(limbTypeName == 'leg_'):
+		if(limbType == 'bipedLeg'):
+			connectFKControls(startCTRL,midCTRL,mainCTRL,endCTRL,prefix +'hip',prefix +'knee',prefix +'ankle',prefix +'foot',ctrlAimAxis)
+	else:
+		if(limbType == 'bipedArm'):
+			connectFKControls(startCTRL,midCTRL,mainCTRL,endCTRL,prefix +'shoulder',prefix +'elbow',prefix +'wrist',ctrlAimAxis)
+		
+
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		
+
+sidePrefix = 'L_'
+upAxis = 'z'
+#howManyTweenJoints = 3
+#howManyKeyJoints = 3
+jointType = 'FK_'
+limbType = 'bipedLeg' #else 'armOrQuadLeg'
+prefix = sidePrefix + jointType
+limbTypeName = 'leg_'
+
+jointOrinetAxis = '.jointOrientZ'
+jointAimAxis = 'x'
+ctrlAimAxis = 'x'
+
+mainCTRL = prefix + 'foot_CTRL'
+startCTRL = prefix + 'hip_CTRL' #'shoulder_LOC'
+midCTRL = prefix + 'knee_CTRL' #'shoulder_LOC'
+endCTRL = prefix + 'toe_CTRL' #'wrist_CTRL'
+pvCTRL = prefix + limbTypeName + 'poleVector_tracking_LOC'
+
+
+sel = maya.cmds.ls(selection = True)
+startJoint = sel[0]
+midJoint = sidePrefix + 'knee'
+endJoint = sel[1]
+toeJoint = sidePrefix + 'toe'
+howwManyKeyJoints = 3
+
+//0=Right, 1=Left, 2=Centre, 3=Misc
+IKcolour = [4,7,24,5]
+FKColour = [13,14,17,11]
+splineIKColour = [23,30,22,28]
+
+masterCreateFK(sel,sidePrefix,upAxis,jointAimAxis,jointType,howwManyKeyJoints,limbType,limbTypeName,ctrlAimAxis,mainCTRL,startCTRL,midCTRL,endCTRL,pvCTRL)

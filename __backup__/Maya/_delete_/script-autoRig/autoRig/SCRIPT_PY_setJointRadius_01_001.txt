@@ -1,0 +1,7 @@
+import maya.cmds
+
+sel = maya.cmds.ls(selection=True,allPaths=True)
+value = 0.4
+
+for s in sel:
+	maya.cmds.setAttr(s + '.radius', value)

@@ -1,0 +1,20 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CONNECT finger joints       ======================================================
+//Index Finger==============================================================================================
+//Instruction
+//1.ensure that all the fingers have a control curve that has the following attributes ".MiddleJoint", ".LastJoint"
+//2.select the fingers starting with the number2 joint to the end. Select the control curve LAST!
+
+string $sel[] = `ls -sl`;//select control last and select joint on first
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+
+connectAttr -force  ($last[0] + ".MiddleJoint") ($sel[0] + ".rotateZ");
+connectAttr -force  ($last[0] + ".LastJoint") ($sel[1] + ".rotateZ");
+
+
+//============================================================================================================
+//============================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

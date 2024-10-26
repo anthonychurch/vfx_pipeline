@@ -1,0 +1,127 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE IK FK SWITCH
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1. select the joints of the chain starting from the start to the end then selct the motion parth curve last
+//2.
+
+
+string $sel[] = `ls -sl`;
+print (size($sel) + ";     ");
+float $howManyJoints = size($sel)-1;//eg; 5
+print ($howManyJoints + ";     ");
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+int $j;
+int $index;
+
+string $prefixSide = "L_";
+string $prefix = $prefixSide + "arm_";
+
+string $startJoint = $sel[0];//"L_shoulder";
+$index = (floor($howManyJoints/2)); 
+string $midJoint = $sel[$index];//"L_elbow";
+$index = $howManyJoints-1;
+string $endJoint = $sel[$index];//"L_wrist";
+
+string $pathLocator[];
+string $motionPathNode[];
+
+string $startLoc[] = `spaceLocator -n ($prefix + "startMotionLocator") -p 0 0 0`;
+string $midLoc[] = `spaceLocator -n ($prefix + "midMotionLocator") -p 0 0 0`;
+string $endLoc[] = `spaceLocator -n ($prefix + "endMotionLocator") -p 0 0 0`;
+
+string $startParent[] = `parentConstraint $startJoint $startLoc[0]`;
+string $midParent[] = `parentConstraint $midJoint $midLoc[0]`;
+string $endParent[] = `parentConstraint $endJoint $endLoc[0]`;
+
+float $startJointPosX = `getAttr ($startLoc[0] + ".translateX")`;
+float $startJointPosY = `getAttr ($startLoc[0] + ".translateY")`;
+float $startJointPosZ = `getAttr ($startLoc[0] + ".translateZ")`;
+float $midJointPosX = `getAttr ($midLoc[0] + ".translateX")`;
+float $midJointPosY = `getAttr ($midLoc[0] + ".translateY")`;
+float $midJointPosZ = `getAttr ($midLoc[0] + ".translateZ")`;
+float $endJointPosX = `getAttr ($endLoc[0] + ".translateX")`;
+float $endJointPosY = `getAttr ($endLoc[0] + ".translateY")`;
+float $endJointPosZ = `getAttr ($endLoc[0] + ".translateZ")`;
+
+
+string $distanceNode1 = `distanceDimension  -sp $startJointPosX $startJointPosY $startJointPosZ -ep $midJointPosX $midJointPosY $midJointPosZ` ;
+
+string $distanceNode2 = `distanceDimension  -sp $midJointPosX $midJointPosY $midJointPosZ -ep $endJointPosX $endJointPosY $endJointPosZ` ;
+
+float $halfJoints = floor($howManyJoints / 2);
+print ($halfJoints + ";     ");
+float $distanceDim1 = `getAttr ($distanceNode1 + ".distance")`;
+float $distanceDim2 = `getAttr ($distanceNode2 + ".distance")`;
+
+float $total = $distanceDim1 + $distanceDim2;
+float $percentage1 = $distanceDim1 / $total;
+print ($percentage1 + ";     ");
+float $percentage2 = $distanceDim2 / $total;
+print ($percentage2 + ";     ");
+
+float $divide1 =  $percentage1 / $halfJoints;
+print ($divide1 + ";     ");
+float $divide2 =  $percentage2 / $halfJoints;
+print ($divide2 + ";     ");
+
+int $increment = 0;
+
+//set up the motion path setup for the first half
+for($i = 0; $i < ($howManyJoints/2); $i++){
+	string $motionLoc[] = `spaceLocator -n ($sel[$i] + "_motion_LOC") -p 0 0 0`;
+	//string $renameLoc = `rename $motionLoc[0] ($sel[$i] + "_motion_LOC")`;
+
+	$pathLocator[$i] = $motionLoc[0];//$renameLoc;
+	
+	string $path = `pathAnimation $last[0] $pathLocator[$i]`;
+	pathAnimation -edit -fractionMode true -follow true -followAxis x -upAxis y -worldUpType "vector" -worldUpVector 0 1 0 -inverseUp false -inverseFront false -bank false $path;
+	
+	string $renamePath = `rename $path ($sel[$i] + "_motionPath")`;
+
+	$motionPathNode[$i] = $renamePath;
+		
+	disconnectAttr ($path + "_uValue.output") ($motionPathNode[$i] + ".uValue");
+	delete ($path + "_uValue");
+	setAttr ($motionPathNode[$i] + ".uValue") ($divide1 * $increment);
+	$increment++;
+}
+
+int $increment = 1;
+
+//set up the motion path setup for the second half
+for($i = floor($howManyJoints/2); $i < ($howManyJoints); $i++){
+	string $motionLoc[] = `spaceLocator -n ($sel[$i] + "_motion_LOC") -p 0 0 0`;
+	//string $renameLoc = `rename $motionLoc[0] ($sel[$i] + "_motion_LOC")`;
+
+	$pathLocator[$i] = $motionLoc[0];//$renameLoc;
+	
+	string $path = `pathAnimation $last[0] $pathLocator[$i]`;
+	pathAnimation -edit -fractionMode true -follow true -followAxis x -upAxis y -worldUpType "vector" -worldUpVector 0 1 0 -inverseUp false -inverseFront false -bank false $path;
+	
+	string $renamePath = `rename $path ($sel[$i] + "_motionPath")`;
+
+	$motionPathNode[$i] = $renamePath;
+		
+	disconnectAttr ($path + "_uValue.output") ($motionPathNode[$i] + ".uValue");
+	delete ($path + "_uValue");
+	setAttr ($motionPathNode[$i] + ".uValue") (($divide2 * $increment) + $percentage1);
+	$increment++;
+}
+
+
+
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

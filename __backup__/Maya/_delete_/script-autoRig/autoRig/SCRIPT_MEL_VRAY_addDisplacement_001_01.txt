@@ -1,0 +1,31 @@
+string $sel[] = `ls -sl`;
+float $count =  size($sel);
+//print $count;
+
+for($i = 0; $i < $count; $i++)
+{
+    //Get shape
+    string $shape[] = `listRelatives -s $sel[$i]`;
+    print $shape[0];
+    
+    int $size = size($shape[0]);
+    //print $size;
+    
+    //vray addAttributesFromGroup front_sensor_band_hiShape vray_subdivision 1;
+    vray addAttributesFromGroup $shape[0] vray_subdivision 1;
+    //vray addAttributesFromGroup front_sensor_band_hiShape vray_subquality 1;
+    vray addAttributesFromGroup $shape[0] vray_subquality 1;
+    //vray addAttributesFromGroup front_sensor_band_hiShape vray_displacement 1;
+    vray addAttributesFromGroup $shape[0] vray_displacement 1;
+
+    string $s = $shape[0] + ".vrayMaxSubdivs";
+    setAttr $s 12;
+    //setAttr $shape[0] + ".vrayMaxSubdivs" 12;
+    string $s = $shape[0] + ".vrayEdgeLength";
+    setAttr $s 0.5;
+   // setAttr $shape[0] + ".vrayEdgeLength" 0.5;
+    string $s = $shape[0] + ".vrayDisplacementShift";
+    setAttr $s -0.5;
+   // setAttr $shape[0] + ".vrayDisplacementShift" -0.5;
+}
+

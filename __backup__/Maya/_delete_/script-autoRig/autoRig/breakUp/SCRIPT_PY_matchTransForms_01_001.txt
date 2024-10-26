@@ -1,0 +1,180 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def addBaseNode(array):
+	returnArray = []
+	for i in array:
+		loc = maya.cmds.duplicate(i,n=i + '_GRP')[0]
+		print('addBaseNode :: loc = ' + str(loc))
+		returnArray.append(loc)
+		rel = maya.cmds.listRelatives(loc,c=True,f=True)
+		print('addBaseNode :: rel = ' + str(rel))
+		for r in rel:
+			if maya.cmds.objExists(r):
+				maya.cmds.delete(r)
+		maya.cmds.parent(i,loc,a=True)
+
+	return returnArray
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+		print('checkAttrExist :: newAttr = ' + str(newAttr))
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+def getTweenJoints(jointArray,howManyTweenJoints):
+	increment = 0
+	newArray = []
+	#print('getTweenJoints :: increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('getTweenJoints :: j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('getTweenJoints :: increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('getTweenJoints :: newArray = ' + str(newArray) )
+
+	return newArray
+
+
+def filterSelection2(array,breakerObj,increment):
+	print ('filterSelection2 :: array =  ' + str(array) )
+	newArray = []
+	brake = False
+	print ('filterSelection2 :: breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('filterSelection2 :: array[n] =  ' + str(array[n]) )
+				brake = True
+	print ('filterSelection2 :: newArray = ' + str(newArray) )
+	return newArray
+
+
+#def setUpWingFlex(ctrlArray,locatorArray,pitchAxis,rotateAxis,rollAxis):
+def setUpWingFlex(ctrlArray,locatorArray,flexAxis):
+	returnArray = []
+	keepVectors = []
+	flexAttr = 'flex'
+	checkAttrExist(ctrlArray[0],flexAttr,'double',-50,50,0,True,True)
+	
+	previousCtrl = ctrlArray[0]
+	previousLocator = locatorArray[0]
+
+	for j in locatorArray:
+		vector = getWSrotate(j)
+		print ('setUpWingFlex :: vector = ' + str(vector) )
+		keepVectors.append(vector)
+	
+	for j in range(0,len(ctrlArray),1):
+		destination = locatorArray[j] + '.rx'# + rotateAxis.lower()
+		source = ctrlArray[j] + '.rx'# + rotateAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		destination = locatorArray[j] + '.ry'# + pitchAxis.lower()
+		source = ctrlArray[j] + '.ry'# + pitchAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		destination = locatorArray[j] + '.rz'# + rollAxis.lower()
+		source = ctrlArray[j] + '.rz'# + rollAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+		
+		constainLocator = maya.cmds.pointConstraint(locatorArray[j], ctrlArray[j], weight=1 )
+
+
+	source = ctrlArray[0] + '.' + flexAttr
+	for j in range(1,len(ctrlArray),1):
+		maya.cmds.select(previousLocator, hi=True)
+		allLoc = maya.cmds.ls(selection=True,tr=True)
+		tweenLoc = filterSelection2(allLoc,locatorArray[j],1)
+		
+		for i in range(1,len(tweenLoc)-1,1):
+			destination = tweenLoc[i] + '.r' + flexAxis.lower()
+			maya.cmds.connectAttr(source, destination, force=True)
+		
+		previousLocator = locatorArray[j]
+
+	grpNodes = addBaseNode(locatorArray)
+	
+	for j in range(0,len(grpNodes),1):
+		print ('setUpWingFlex :: keepVectors[j] = ' + str(keepVectors[j]) )
+		setWSrotate(grpNodes[j],keepVectors[j])
+			
+	return returnArray
+
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+
+pos = getWStransform(sel[0])
+rot = getWSrotate(sel[0])
+setWStransform(sel[1],pos)
+setWSrotate(sel[1],rot)
+

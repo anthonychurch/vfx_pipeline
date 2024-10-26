@@ -1,0 +1,61 @@
+import maya.cmds
+import random
+import math
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+
+def multiConnect(destinationArray,destinationAttr,source,sourceAttr):
+	source =  obj + '.' + sourceAttr
+	for i in objArray:
+		destination = i + '.' + destinationAttr
+		maya.cmds.connectAttr(source, destination, force=True)
+
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+obj = maya.cmds.ls(selection=True,tail=1)[0]
+objArray = []
+srceAttr = 'fkScale'
+destAttr = 'translateZ'
+
+for j in range(0,len(sel)-1,1):
+	objArray.append(sel[j])
+
+checkAttrExist(obj,srceAttr,'double',-20,5,0,True,False)
+multiConnect(objArray,destAttr,obj,srceAttr)
+
+
+#multiConnect(objArray,'rx',obj,'rx')
+#multiConnect(objArray,'ry',obj,'ry')
+#multiConnect(objArray,'rz',obj,'rz')

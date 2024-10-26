@@ -1,0 +1,37 @@
+import maya.cmds
+import random
+import math
+
+def createLocatorsOnJointChain(jointArray):
+	print('createLocatorsOnJointChain :: jointArray = ' + str(jointArray))
+	returnArray = []
+		
+	for j in range(0,len(jointArray),1):
+		name = jointArray[j] + '_LOC'
+		createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+		print('createLocatorsOnJointChain :: createLocator = ' + str(createLocator))
+		constainLocator = maya.cmds.parentConstraint(jointArray[j], createLocator, weight=1 )
+		maya.cmds.delete(constainLocator)
+		returnArray.append(createLocator)
+		if(j != 0):
+			maya.cmds.parent(createLocator,previousLocator,a=True)
+
+		if(j == len(jointArray)-1):
+			print('createLocatorsOnJointChain :: j = ' + str(j))
+			#maya.cmds.setAttr(createLocator + '.translateX', 0)
+			#maya.cmds.setAttr(createLocator + '.translateY', 0)
+			#maya.cmds.setAttr(createLocator + '.translateZ', 0)
+			maya.cmds.setAttr(createLocator + '.rotateX', 0)
+			maya.cmds.setAttr(createLocator + '.rotateY', 0)
+			maya.cmds.setAttr(createLocator + '.rotateZ', 0)
+		
+		previousLocator = createLocator
+
+	return returnArray
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+
+createLocatorsOnJointChain(sel)

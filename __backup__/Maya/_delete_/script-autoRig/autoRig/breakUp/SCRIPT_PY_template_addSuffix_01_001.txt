@@ -1,0 +1,22 @@
+import maya.cmds
+import random
+import math
+
+def getSuffix(name,tail):
+	newName = name[len(name)-tail:len(name)]	
+	return newName
+
+
+def renamePrefixSuffix(array,prefix,suffix):
+	returnArray = []
+	for item in array:
+		temp = maya.cmds.rename(item,prefix + item + suffix)
+		returnArray.append(temp)
+
+	return returnArray
+
+
+sel = maya.cmds.ls(selection=True)
+
+renamePrefixSuffix(sel,'','_low')
+

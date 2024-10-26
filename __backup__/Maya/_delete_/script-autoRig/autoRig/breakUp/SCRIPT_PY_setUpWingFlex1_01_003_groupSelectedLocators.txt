@@ -1,0 +1,298 @@
+import maya.cmds
+import random
+import math
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def addBaseNode(array,suffix):
+	returnArray = []
+	for i in array:
+		loc = maya.cmds.duplicate(i,n=i + '_' + suffix)[0]
+		print('addBaseNode :: loc = ' + str(loc))
+		returnArray.append(loc)
+		rel = maya.cmds.listRelatives(loc,c=True,f=True)
+		print('addBaseNode :: rel = ' + str(rel))
+		for r in rel:
+			if maya.cmds.objExists(r):
+				maya.cmds.delete(r)
+		maya.cmds.parent(i,loc,a=True)
+
+	return returnArray
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+		print('checkAttrExist :: newAttr = ' + str(newAttr))
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+
+def getTweenJoints(jointArray,howManyTweenJoints):
+	increment = 0
+	newArray = []
+	#print('getTweenJoints :: increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('getTweenJoints :: j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('getTweenJoints :: increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('getTweenJoints :: newArray = ' + str(newArray) )
+
+	return newArray
+
+
+def filterSelection2(array,breakerObj,increment):
+	print ('filterSelection2 :: array =  ' + str(array) )
+	newArray = []
+	brake = False
+	print ('filterSelection2 :: breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('filterSelection2 :: array[n] =  ' + str(array[n]) )
+				brake = True
+	print ('filterSelection2 :: newArray = ' + str(newArray) )
+	return newArray
+
+
+#def setUpWingFlex(ctrlArray,locatorArray,pitchAxis,rotateAxis,rollAxis):
+def setUpWingFlex2(ctrlArray,locatorArray,flexAxis):
+	returnArray = []
+	keepVectors = []
+	tweenLoc = []
+	flexAttr = 'flex'
+	checkAttrExist(ctrlArray[0],flexAttr,'double',-50,50,0,True,True)
+	
+	previousCtrl = ctrlArray[0]
+	previousLocator = locatorArray[0]
+	
+	maya.cmds.select(previousLocator, hi=True)
+	allLoc = maya.cmds.ls(selection=True,tr=True)
+
+	#GET TWEEN LOCATORS
+	for j in range(1,len(ctrlArray),1):
+		if(j < len(ctrlArray)):
+			print('setUpWingFlex2 :: j = ' + str(j))
+			print('setUpWingFlex2 :: locatorArray[j-1] = ' + str(locatorArray[j-1]))
+			temp = maya.cmds.listRelatives(locatorArray[j-1],c=True,typ='transform')
+			print('setUpWingFlex2 :: temp = ' + str(temp))
+			tempArray = filterSelection2(temp,locatorArray[j],1)
+			for i in tempArray:
+				print('setUpWingFlex2 :: i = ' + str(i))
+				tweenLoc.append(i)
+			
+			if(j == len(ctrlArray)-1):
+				children = maya.cmds.listRelatives(locatorArray[j],c=True,typ='transform')
+				print('setUpWingFlex2 :: Checking to see if last locator (' + str(locatorArray[j]) + ') has children ')
+				if(children != None):
+					for c in children:
+						print('setUpWingFlex2 :: ' + str(locatorArray[j]) + ') has child : ' + str(c))
+						tweenLoc.append(c)
+
+	print('setUpWingFlex2 :: tweenLoc ' + str(tweenLoc))
+
+	#grpNodes = addBaseNode(allLoc)
+	rotGrpNodes = addBaseNode(locatorArray,'ROT')
+	grpNodes = addBaseNode(rotGrpNodes,'GRP')
+	grpCTRL = addBaseNode(ctrlArray,'GRP')
+
+	for j in range(0,len(ctrlArray),1):
+		#destination = locatorArray[j] + '.rx'# + rotateAxis.lower()
+		destination = rotGrpNodes[j] + '.rx'# + rotateAxis.lower()
+		source = ctrlArray[j] + '.rx'# + rotateAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		#destination = locatorArray[j] + '.ry'# + pitchAxis.lower()
+		destination = rotGrpNodes[j] + '.ry'# + pitchAxis.lower()
+		source = ctrlArray[j] + '.ry'# + pitchAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+		#destination = locatorArray[j] + '.rz'# + rollAxis.lower()
+		destination = rotGrpNodes[j] + '.rz'# + rollAxis.lower()
+		source = ctrlArray[j] + '.rz'# + rollAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+		
+		constainLocator = maya.cmds.pointConstraint(rotGrpNodes[j], ctrlArray[j], weight=1 )
+
+	source = ctrlArray[0] + '.' + flexAttr
+	for i in allLoc:
+		destination = i + '.r' + flexAxis.lower()
+		maya.cmds.connectAttr(source, destination, force=True)
+
+	#for i in flexGrpNodes:
+	#	destination = i + '.r' + flexAxis.lower()
+	#	maya.cmds.connectAttr(source, destination, force=True)
+	
+	return returnArray
+
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+mainLocators = maya.cmds.ls(selection=True)
+#ctrls = createLocatorsOnJointChain(sel)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+def whichAxis(value):
+	axis = ['x','X']
+	if(value == 2):
+		axis = ['y','Y']
+	elif(value == 3):
+		axis = ['z','Z']
+	return axis
+
+
+def buildWindow(windowName,windowTitle, line1,line2,line3):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 300))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	#form = maya.cmds.formLayout(windowName + '_form1')
+	#tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	#maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	#maya.cmds.columnLayout('')
+	#maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldButtonGrp( windowName + '_mainCtrls', label='Get Controls:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_mainCtrls' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line2 )
+	maya.cmds.textFieldButtonGrp( windowName + '_mainLocators', label='Get Locators:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_mainLocators' + '","textFieldButtonGrp")' )
+	maya.cmds.radioButtonGrp( windowName + '_flexRotateAxis', label='Joint Aim Axis:', labelArray3=['X', 'Y', 'Z'], numberOfRadioButtons=3, en=True, sl=2 )
+	maya.cmds.text( label= '' )
+	maya.cmds.text( label= line3 )
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+	#maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+def runWindow(windowName):
+	getCtrls = maya.cmds.textFieldButtonGrp( windowName + '_mainCtrls', q=True, text=True )
+	getLocators = maya.cmds.textFieldButtonGrp( windowName + '_mainLocators', q=True, text=True )
+	ctrls = getCtrls.split()
+	locators = getLocators.split()
+
+	fra = maya.cmds.radioButtonGrp( windowName + '_flexRotateAxis', q=True, sl=True )
+	flexAxis = whichAxis(fra)[1]
+	#jua = maya.cmds.radioButtonGrp( windowName + '_jointUpAxis', q=True, sl=True )
+	#pitchAxis = whichAxis(jua)[1]
+	#jra = maya.cmds.radioButtonGrp( windowName + '_jointRotAxis', q=True, sl=True )
+	#rotateAxis = whichAxis(jra)[1]
+
+	#print ('rollAxis = ' + str(rollAxis) )
+	#print ('rotateAxis = ' + str(rotateAxis) )
+	#print ('pitchAxis = ' + str(pitchAxis) )
+	
+	setUpWingFlex2(ctrls,locators,flexAxis)
+
+
+line1 = '	SELECT THE MAIN CONTROLS:-'
+line2 = '	SELECT THE LOCATORS THAT COINCIDE THE MIN CONTROLS:-'
+line3 = '	N.B. MAKE SURE THAT ALL MAIN CONTROLS AXIS MATCH LOCATOR AXIS'
+ver = ' : ver 01.003 : Groups all Locators'
+windowTitle = 'Set Up Wing Flex' + ver
+rebuildCurveWindowName = 'SetUpWingFlex'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName,windowTitle,line1,line2,line3)
+

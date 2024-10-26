@@ -1,0 +1,150 @@
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+int $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+int $i;
+
+string $connectorAttribute = ".rotateX";//change this variable
+
+string $socketAttribute = ".input";//change this variable
+
+
+for($i = 0; $i < $size; $i++){
+	
+	string $connector = $last[0] + $connectorAttribute;
+	string $socket = $sel[$i] ;
+	connectAttr -force $connector ($socket + ($socketAttribute + "2X"));
+	connectAttr -force $connector ($socket + ($socketAttribute + "2Y"));
+	connectAttr -force $connector ($socket + ($socketAttribute + "2Z"));
+}
+
+
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+int $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+int $i;
+
+string $connectorAttribute = ".output";//change this variable
+
+string $socketAttribute = ".rotateX";//change this variable
+
+
+for($i = 0; $i < ($size - 1); $i++){
+	
+	string $socket = $sel[$i] + $socketAttribute;
+	string $connector = $last[0];
+	connectAttr -force  ($connector + ($connectorAttribute + "X")) $socket;
+	connectAttr -force  ($connector + ($connectorAttribute + "Y")) $socket;
+	connectAttr -force  ($connector + ($connectorAttribute + "Z")) $socket;
+}
+
+
+
+
+
+//connect stiffnes attribute
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+int $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+int $i;
+
+//create shading node
+string $setRangeNode = `shadingNode -n "IK_L_arm_setRange1" -asUtility setRange`;
+//rename $setRangeNode "IK_L_arm_setRange1";
+
+
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".stiffness";//change this variable
+
+
+string $connectorAttribute2 = ".outValueX";//change this variable
+string $socketAttribute2 = ".stiffness";//change this variable
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $connector1 = $last[0] + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+
+for($i = 0; $i < ($size - 1); $i++){
+			
+			
+			string $connector2 = $setRangeNode + $connectorAttribute2;
+			
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "X");
+			connectAttr -force  $connector2  $socket2;
+
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "Y");
+			connectAttr -force  $connector2  $socket2;
+
+			string $socket2 = $sel[$i] + ($socketAttribute2 + "Z");
+			connectAttr -force  $connector2  $socket2;
+
+}
+
+
+
+
+
+//setup IK FK Switch
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+int $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+int $i;
+
+//create shading node
+string $setRangeNode = `shadingNode -n "IKFK_L_arm_setRange1" -asUtility setRange`;
+
+
+
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".IkFk";//change this variable
+
+string $socketAttribute2 = ".valueY";//change this variable
+
+
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $socket2 = $setRangeNode + $socketAttribute2;
+string $connector1 = $last[0] + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+connectAttr -force  $connector1  $socket2;
+
+string $connectorAttribute3 = ".outValueX";//change this variable
+string $connectorAttribute4 = ".outValueY";//change this variable
+
+string $visibilityAttribute = ".visibility";
+
+
+string $IK[] = {".IK_L_shoulderW0", ".IK_L_upperArm1W0", ".IK_L_upperArm2W0", ".IK_L_elbowW0", ".IK_L_foreArm1W0", ".IK_L_foreArm2W0", ".IK_L_wristW0"};
+string $FK[] = {".FK_L_shoulderW1", ".FK_L_upperArm1W1", ".FK_L_upperArm2W1", ".FK_L_elbowW1", ".FK_L_foreArm1W1", ".FK_L_foreArm2W1", ".FK_L_wristW1"};
+
+
+string $IKCTRL[] = {"IK_L_CTRL_shoulder", "IK_L_CTRL_wrist"};
+string $FKCTRL[] = {"FK_L_CTRL_shoulder", "FK_L_CTRL_elbow"};
+
+for($i = 0; $i < ($size - 1); $i++){
+			string $socket3 = $sel[$i] + $IK[$i];
+			string $socket4 = $sel[$i] + $FK[$i];
+			
+			string $connector3 = $setRangeNode + $connectorAttribute3;
+			string $connector4 = $setRangeNode + $connectorAttribute4;
+			
+			connectAttr -force  $connector3  $socket3;//IK
+			connectAttr -force  $connector4  $socket4;//FK
+
+			connectAttr -force  $connector3  ($IKCTRL[$i] + $visibilityAttribute);
+			connectAttr -force  $connector4  ($FKCTRL[$i] + $visibilityAttribute);
+}
+
+
+
+
+
+

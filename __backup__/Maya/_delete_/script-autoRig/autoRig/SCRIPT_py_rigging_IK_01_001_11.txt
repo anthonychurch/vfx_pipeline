@@ -1,0 +1,198 @@
+#create IK
+#set up polevector control
+#
+
+import maya.cmds
+import random
+import math
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection(array,breakerObj):
+	newArray = []
+	brake = False
+	for n in array:
+		if(brake == False):
+			newArray.append(n)
+			if(n == breakerObj):
+				#print n
+				brake = True
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,group):
+	newArray = []
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicate, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicate, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		if(child != None):
+			if(len(child) == 1):
+				duplicate = child[0]
+			else:
+				print('ERROR: ' + str(j) + ' has a branch of Multiple Joints')
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],group[len(group)-1])
+	return newArray
+	
+def createIKhandles(prefix,limbType,type,startJoint,endJoint,pvCtrl,stretchy):
+	ikh = prefix + limbType + 'ikHandle'
+	maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+	if(type == 'ikRPsolver'):
+		maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	if(stretchy):
+		print 'Need to make IK stretch joints'
+
+
+
+
+		
+
+sidePrefix = 'L_'
+upAxis = 'z'
+howManyTweenJoints = 3
+howManyKeyJoints = 3
+jointType = 'IK_'
+limbType = 'bipedLeg' #else 'armOrQuadLeg'
+prefix = sidePrefix + jointType
+pv = 'L_IK_leg_poleVector_CTRL'
+kneeJoint = 'L_knee'
+footControl = 'L_IK_foot_CTRL'
+limbTypeName = 'leg_'
+groups = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+skeletonCtrlGrp = groups[3] 
+sel = maya.cmds.ls(selection = True)
+startJoint = sel[0]
+endJoint = sel[1]
+toeJoint = None
+if(len(sel) > 2):
+	toeJoint = sel[2]
+maya.cmds.select(sel[0])
+maya.cmds.select(hierarchy = True)
+selHi = maya.cmds.ls(selection = True)
+if(limbTypeName == 'leg_'):
+	if(len(sel) > 2):
+		selectedJoints = filterSelection(selHi,toeJoint)
+	else:
+		print('ERROR :: No toe joint selected')
+else:
+	selectedJoints = filterSelection(selHi,endJoint)
+	
+maya.cmds.select(clear=True)
+
+setUpGrp(groups)
+setupPolVector(pv,kneeJoint,0,upAxis)
+#ikJoints are only the joints that make up the IKPhandle chain
+ikJoints = createIKjoints(selectedJoints,sidePrefix,jointType,groups)
+ej = prefix + findNamePrefix(endJoint,sidePrefix)
+createIKhandles(prefix,limbTypeName,'ikRPsolver',ikJoints[0],ej,pv,True)
+if(limbTypeName == 'leg_'):
+	createIKhandles(prefix,'foot-','ikSCsolver',ikJoints[len(ikJoints)-3],ikJoints[len(ikJoints)-2],False,False)
+	createIKhandles(prefix,'toe_','ikSCsolver',ikJoints[len(ikJoints)-2],ikJoints[len(ikJoints)-1],False,False)
+
+
+
+
+prefix = sidePrefix + jointType + limbTypeName
+#mainCtrl = e.g foot or wrist
+#startCTRL = 
+#endCTRL =
+def setUpIKstretch(prefix,limbTypeName,ikJointArray,mainCtrl,startCTRL,endCTRL):
+	#select second and last joint of Ik Chain, then the ctrl
+	
+	autoSwitchAttr = '.autoStretchIK'#must be boolean
+	stretchIKAttr = '.stretchIK'
+	stretchNormaliseNode = prefix + 'stretchNormalise_setRange'
+
+	IKNormaliseNode = prefix + 'normalize_multiplyDivide'
+	IKMultiplierNode = prefix + 'multiplier_multiplyDivide'
+	IKConditionNode = prefix + 'autoStretch_condition'
+	IKScaleLimiterNode = prefix + 'limit_multiplyDivide'
+	IKAutoStretchNode = prefix + "autoStretch_blend'
+	IKStretchNode = prefix + 'stretch_blend'
+
+	startJoint = ikJointArray[0]
+	print('startJoint = ' + str(startJoint))
+	endJoint = ikJointArray[len(ikJointArray)]
+	print('endJoint = ' + str(endJoint))
+
+	distanceName = prefix + 'distanceDimension1'
+
+	startLoc = maya.cmds.spaceLocator( n=prefix + 'start_dim_LOC',p=(0, 0, 0) )
+	endLoc = maya.cmds.spaceLocator( n=prefix + 'end_dim_LOC',p=(2, 0, 0) )
+	print('startLoc = ' + str(startLoc))
+	startLocPos = getWStransform(startJoint)
+	setWStransform(startLoc[0],startLocPos)
+	endLocPos = getWStransform(endJoint)
+	setWStransform(endLoc[0],endLocPos)
+
+	distanceNode = distanceDimension( sp=(startLocPos[0], startLocPos[1], startLocPos[2]), ep=(endLocPos[0], endLocPos[1], endLocPos[2]) )
+	distanceTrans = maya.cmds.listRelatives(distanceNode,c=True,f=True)
+	distanceName = maya.cmds.rename(distanceTrans[0],distanceName)
+	print('distanceName = ' + str(distanceName))
+
+	#startConstraint = maya.cmds.parentConstraint(startJoint,startLoc[0])
+	#maya.cmds.delete(startConstraint)
+	startParent = maya.cmds.parentConstraint(startLoc[0],startCTRL)
+	endParent = maya.cmds.parentConstraint(endLoc[0],endCTRL)
+	
+	#START///////////////////////////////////CREATE CONDITION, NORMALISE MULTIPLYDIVIDE NODE AND 
+	#START///////////////////////////////////CONNECT THE DISTANCE NODES DISTANCE ATTRIBUTE TO NORMALISE MULTIPLYDIVIDE NODES INPUT1X 
+	#START///////////////////////////////////CONNECT THE NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+	setRangeNode = maya.cmds.shadingNode(n=stretchNormaliseNode,au='setRange')
+	connector = distanceName + '.distance'
+	socket = normaliseNode + '.input1X'
+	maya.cmds.connectAttr(connector,socket,force=True)
+	
+
+	
+
+

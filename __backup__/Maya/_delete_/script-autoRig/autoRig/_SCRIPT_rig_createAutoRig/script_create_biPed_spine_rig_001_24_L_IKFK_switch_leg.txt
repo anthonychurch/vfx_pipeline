@@ -1,0 +1,109 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE IK FK SWITCH
+//print("__________________________SET UP THE IK FK SWITCH__________________________");
+//INSTRUCTIONS;
+//1.select parent constraints that are associated with the Arm deform joints and the hand controls 
+//2.edit the arrays $IK[], $FK[], $IKCTRL[] and $FKCTRL[]
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+
+// TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT  ///////////////////////
+
+string $IK[] = {".IK_L_thigh1W0", ".IK_L_thigh2W0", ".IK_L_thigh3W0", ".IK_L_kneeW0", ".IK_L_shin1W0", ".IK_L_shin2W0", ".IK_L_shin3W0", ".IK_L_ankleW0"};
+string $FK[] = {".FK_L_thigh1W1", ".FK_L_thigh2W1", ".FK_L_thigh3W1", ".FK_L_kneeW1", ".FK_L_shin1W1", ".FK_L_shin2W1", ".FK_L_shin3W1", ".FK_L_ankleW1"};
+string $IKCTRL[] = {"IK_L_CTRL_foot", "IK_L_CTRL_knee_PV"};
+string $FKCTRL[] = {"L_FK_CTRL_hip", "FK_L_CTRL_knee", "FK_L_CTRL_foot", "FK_L_CTRL_toe"};
+
+// TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT TO EDIT !!!!! TO EDIT  ///////////////////////
+
+
+
+
+string $handCTRL = $last[0];//"L_foot";
+
+
+
+string $setRangeNode = `shadingNode -n "IKFK_L_leg_setRange1" -asUtility setRange`;
+
+
+
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".IkFk";//change this variable
+
+string $socketAttribute2 = ".valueY";//change this variable
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $socket2 = $setRangeNode + $socketAttribute2;
+string $connector1 = $handCTRL + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+connectAttr -force  $connector1  $socket2;
+
+string $connectorAttribute3 = ".outValueX";//change this variable
+string $connectorAttribute4 = ".outValueY";//change this variable
+
+string $visibilityAttribute = ".visibility";
+
+
+for($i = 0; $i < ($howManyJoints - 1); $i++){
+
+			string $socket3 = $sel[$i] + $IK[$i];
+			string $socket4 = $sel[$i] + $FK[$i];
+			
+			string $connector3 = $setRangeNode + $connectorAttribute3;
+			string $connector4 = $setRangeNode + $connectorAttribute4;
+
+						
+			connectAttr -force  $connector3  $socket3;//IK
+			connectAttr -force  $connector4  $socket4;//FK
+			
+}
+
+
+
+setAttr ($setRangeNode + ".oldMaxX") 10;
+setAttr ($setRangeNode + ".oldMaxY") 10;
+setAttr ($setRangeNode + ".maxX") 1;
+setAttr ($setRangeNode + ".minY") 1;
+
+
+float $IKSize = size($IKCTRL);
+
+
+for($i = 0; $i < $IKSize; $i++){
+
+		string $connector3 = $setRangeNode + $connectorAttribute3;
+		string $socket5 = $IKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector3  $socket5;
+
+
+}
+
+
+
+
+float $FKSize = size($FKCTRL);
+
+for($i = 0; $i < $FKSize; $i++){
+		string $connector4 = $setRangeNode + $connectorAttribute4;
+		string $socket6 = $FKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector4  $socket6;
+
+
+}
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+

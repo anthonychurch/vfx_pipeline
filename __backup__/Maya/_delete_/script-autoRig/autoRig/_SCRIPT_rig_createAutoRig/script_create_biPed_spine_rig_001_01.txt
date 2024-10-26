@@ -1,0 +1,52 @@
+
+//custome build curve for spine that ensures that the middle control poin on the spine curve is located at the bottom the rib cage
+//as this is going to be a crucial pivot point
+select -add pelvis1|pelvis2|spine1|spine2|spine3|spine4|spine5|spine6|spine7|spine8|neck1.rotatePivot ;
+ikHandle -sol ikSplineSolver -pcv false -ns 2;  OR  ikHandle -sol ikSplineSolver -ccv false -pcv false -ns 2;
+select -r curve1 ;
+
+
+//cluster spine curve
+
+
+//setup stretchy IK for spine
+select -r spine_splineIK_curve ;
+arclen -ch 1;
+// Result: curveInfo1 // 
+rename to spine_curveInfo1
+
+string $multiplierNode = shadingNode -asUtility multiplyDivide;
+rename "multiplyDivide1" "spine_multiplier_multiplyDivide";
+
+connectAttr -force spine_curveInfo1.arcLength spine_multiplier_multiplyDivide1.input2X;
+
+setAttr "spine_multiplier_multiplyDivide1.input1X" spine_curveInfo1.arcLength;
+
+
+
+
+
+//create stretchy IK connections
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+float $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil(($size - 1) / 3);
+
+
+
+
+int $i;
+
+string $connector = "outputX";//change this variable
+
+string $socketAttribute = ".input" ;//change this variable
+
+
+for($i = 0; $i < $size; $i++){
+	string $socket = $sel[$i] + $socketAttribute;
+	connectAttr -force $connector $socket;
+}
+
+

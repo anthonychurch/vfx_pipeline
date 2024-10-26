@@ -1,0 +1,16 @@
+import maya.cmds
+
+def mirrorObj(array,attr,axis):
+	for s in array:
+		pos = maya.cmds.getAttr(s + '.' + attr + axis)
+		pos = pos * -1
+		maya.cmds.setAttr(s + '.' + attr + axis,pos)
+
+sel = maya.cmds.ls(selection=True)
+
+attribute = 't'
+axis = 'x'
+mirrorObj(sel,attribute,axis)
+
+
+

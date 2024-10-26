@@ -1,0 +1,216 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//CREATE CONTROLS FOR APPENDAGE
+//print("__________________________CREATE CONTROLS FOR APPENDAGE__________________________");
+//INSTRUCTIONS;
+//1. create IK, FK and SPL sets of the joints
+//2. select the master curves for the arm conrtrol and poleVector
+
+
+string $sel[] = `ls -sl`;//0 = circle, 1 = box, 2 = IKFK CTRL
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+int $i;
+int $j;
+float $howManyTweenJoints = 3;
+
+string $IKFKparentConstraints[];
+
+
+
+string $sidePrefix = "R_";
+string $prefix = $sidePrefix + "arm_";
+string $IKprefix = $sidePrefix + "IK_";
+string $FKprefix = $sidePrefix + "FK_";
+
+
+string $handCTRL = $sidePrefix + "hand_CTRL";
+
+float $direction = 2;
+
+string $IKstartCTRL = $IKprefix + "shoulder_LOC";
+string $IKstartTracker = $IKprefix + "shoulder_tracking_LOC";
+string $IKmiddleTracker = $IKprefix + "elbow_tracking_LOC";
+string $IKendCTRL = $IKprefix + "wrist_CTRL";
+string $IKpoleVector = $IKprefix + "poleVector_CTRL";
+string $IKFKswitch = $prefix + "IKFK_switch";
+
+string $masterCTRL = "MASTER_CTRL";
+
+string $clavicleCTRL = $sidePrefix + "clavicle_CTRL";
+
+string $FKstartCTRL = $FKprefix + "shoulder_CTRL";
+string $FKmiddleCTRL = $FKprefix + "elbow_CTRL";;
+string $FKendTracker = $FKprefix + "wrist_tracking_LOC";;
+string $FKpoleVectorTracker = $FKprefix + "poleVector_tracking_LOC";
+
+string $IKstartJoint = $IKprefix + "shoulder";
+string $IKmiddleJoint = $IKprefix + "elbow";
+string $IKendJoint = $IKprefix + "wrist";
+
+string $FKstartJoint = $FKprefix + "shoulder";
+string $FKmiddleJoint = $FKprefix + "elbow";
+string $FKendJoint = $FKprefix + "wrist";
+
+string $loc[] = `spaceLocator -n $IKstartCTRL -p 0 0 0`;
+$IKstartCTRL =  $loc[0];
+string $loc[] = `spaceLocator -n $IKstartTracker -p 0 0 0`;
+$IKstartTracker =  $loc[0];
+string $loc[] = `spaceLocator -n $IKmiddleTracker -p 0 0 0`;
+$IKmiddleTracker =  $loc[0];  
+string $copy[] = `duplicate -n $IKendCTRL $sel[0]`;
+$IKendCTRL = $copy[0];
+string $copy[] = `duplicate -n $IKpoleVector $sel[1]`;
+$IKpoleVector = $copy[0];
+//NOT NEEDED//////////////////////////////////////////////////////////
+//string $copy[] = `duplicate -n $IKFKswitch $sel[2]`;
+//$IKFKswitch = $copy[0];
+
+float $translate[] = `xform -q -ws -t $IKstartJoint`;
+float $rotate[] = `xform -q -ws -ro $IKstartJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $IKstartCTRL;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $IKstartCTRL;
+
+parent -a $IKstartCTRL $clavicleCTRL;
+select -r $IKstartCTRL;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+float $translate[] = `xform -q -ws -t $IKstartJoint`;
+float $rotate[] = `xform -q -ws -ro $IKstartJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $IKstartTracker;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $IKstartTracker;
+
+string $aimConstrain[] = `aimConstraint $IKmiddleJoint $IKstartTracker`;
+delete $aimConstrain[0];
+
+parent -a $IKstartTracker $IKstartJoint;
+select -r $IKstartTracker;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+float $translate[] = `xform -q -ws -t $IKmiddleJoint`;
+float $rotate[] = `xform -q -ws -ro $IKmiddleJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $IKmiddleTracker;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $IKmiddleTracker;
+
+parent -a $IKmiddleTracker $IKmiddleJoint;
+select -r $IKmiddleJoint;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+
+
+addAttr -ln "stiffness"  -at double  -min 0 -max 10 -dv 0 $IKendCTRL;
+setAttr -e-keyable true ($IKendCTRL + ".stiffness");
+
+addAttr -ln "stetchIK" -at double -min 0 -max 10  -dv 0 $IKendCTRL;
+setAttr -e-keyable true ($IKendCTRL + ".stretchIK");
+
+addAttr -ln "autoStetchIK" -at double -min 0 -max 10  -dv 0 $IKendCTRL;
+setAttr -e-keyable true ($IKendCTRL + ".autoStretchIK");
+
+addAttr -ln "isolate" -at double -min 0 -max 10  -dv 0 $IKendCTRL;
+setAttr -e-keyable true ($IKendCTRL + ".isolate");
+
+string $group1 = `group -n ($IKendCTRL + "_GRP") $IKendCTRL`;
+
+float $translate[] = `xform -q -ws -t $IKendJoint`;
+float $rotate[] = `xform -q -ws -ro $IKendJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $group1;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $group1;
+
+parent -a $group1 $masterCTRL;
+select -r $group1;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+string $parentConstrain[] = `parentConstraint -mo $clavicleCTRL $group1`;
+
+//NOT NEEDED//////////////////////////////////////////////////////////
+//xform -ws -t $translate[0] $translate[1] ($translate[2] - 2) $IKFKswitch;
+
+
+
+
+float $translate[] = `xform -q -ws -t $IKmiddleJoint`;
+float $rotate[] = `xform -q -ws -ro $IKmiddleJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $IKpoleVector;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $IKpoleVector;
+
+parent -a $IKpoleVector $IKmiddleJoint;
+parent -w $IKpoleVector;
+//move -os 0 0 -2 $IKpoleVector;
+float $translate[] = `xform -q -ws -t $IKpoleVector`;
+xform -ws -t $translate[0] $translate[1] ($translate[2] - $direction) $IKpoleVector;
+parent -a $IKpoleVector $clavicleCTRL;
+select -r $IKpoleVector;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+
+
+string $copy[] = `duplicate -n $FKstartCTRL $sel[0]`;
+$FKstartCTRL = $copy[0];
+string $copy[] = `duplicate -n $FKmiddleCTRL $sel[0]`;
+$FKmiddleCTRL = $copy[0];
+string $loc[] = `spaceLocator -n $FKendTracker -p 0 0 0`;
+$FKendTracker =  $loc[0];
+string $loc[] = `spaceLocator -n $FKpoleVectorTracker -p 0 0 0`;
+$FKpoleVectorTracker =  $loc[0];  
+
+
+string $group1 = `group -n ($FKstartCTRL + "_GRP") $FKstartCTRL`;
+float $translate[] = `xform -q -ws -t $FKstartJoint`;
+float $rotate[] = `xform -q -ws -ro $FKstartJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $group1;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $group1;
+string $aimConstrain[] = `aimConstraint $FKmiddleJoint $group1`;
+delete $aimConstrain[0];
+parent -a $group1 $clavicleCTRL;
+select -r $FKstartCTRL;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+string $group2 = `group -n ($FKmiddleCTRL + "_GRP") $FKmiddleCTRL`;
+print ($group2);
+float $translate[] = `xform -q -ws -t $FKmiddleJoint`;
+float $rotate[] = `xform -q -ws -ro $FKmiddleJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $group2;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $group2;
+string $aimConstrain[] = `aimConstraint $FKendJoint $group2`;
+delete $aimConstrain[0];
+parent -a $group2 $FKstartCTRL;
+select -r $FKmiddleCTRL;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+float $translate[] = `xform -q -ws -t $FKendJoint`;
+float $rotate[] = `xform -q -ws -ro $FKendJoint`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $FKendTracker;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $FKendTracker;
+
+parent -a $FKendTracker $FKmiddleCTRL;
+select -r $FKendTracker;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+float $translate[] = `xform -q -ws -t $IKpoleVector`;
+float $rotate[] = `xform -q -ws -ro $IKpoleVector`;
+xform -ws -t $translate[0] $translate[1] $translate[2] $FKpoleVectorTracker;
+xform -ws -ro $rotate[0] $rotate[1] $rotate[2] $FKpoleVectorTracker;
+
+parent -a $FKpoleVectorTracker $FKmiddleJoint;
+move -os 0 0 -2 $FKpoleVectorTracker;
+parent -a $FKpoleVectorTracker $FKmiddleCTRL;
+select -r $FKpoleVectorTracker;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+
+string $pointConstrain[] = `pointConstraint -mo $IKendCTRL $handCTRL`;
+string $pointConstrain[] = `pointConstraint -mo $FKendTracker $handCTRL`;
+string $pointConstrain[] = `pointConstraint -mo $IKstartJoint $IKstartCTRL`;
+
+string $IK[] = `ikHandle -n ($IKprefix + "IKhandle") -sj $IKstartJoint -ee $IKendJoint`;
+parent -a $IK[0] $IKendCTRL;
+
+string $IKpoleVect[] = `poleVectorConstraint $IKpoleVector $IK[0]`;
+
+string $parentConstrain[] = `parentConstraint -mo $FKstartCTRL $FKstartJoint`;
+string $parentConstrain[] = `parentConstraint -mo $FKmiddleCTRL $FKmiddleJoint`;
+
+//string $pointConstrain[] = `pointConstraint -mo $IKendCTRL $IKFKswitch`;
+//string $pointConstrain[] = `pointConstraint -mo $FKmiddleCTRL $IKFKswitch`;

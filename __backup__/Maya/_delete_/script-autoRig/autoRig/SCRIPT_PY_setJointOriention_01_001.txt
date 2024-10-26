@@ -1,0 +1,39 @@
+import maya.cmds
+import random
+import math
+
+
+def zeroJointOriention(obj):
+	rx = maya.cmds.getAttr(str(obj) + '.rotateX')
+	print('rx = ' + str(rx))
+	ry = maya.cmds.getAttr(str(obj) + '.rotateY')
+	print('ry = ' + str(ry))
+	rz = maya.cmds.getAttr(str(obj) + '.rotateZ')
+	print('rz = ' + str(rz))
+	jox = maya.cmds.getAttr(str(obj) + '.jointOrientX')
+	print('jox = ' + str(jox))
+	joy = maya.cmds.getAttr(str(obj) + '.jointOrientY')
+	print('joy = ' + str(joy))
+	joz = maya.cmds.getAttr(str(obj) + '.jointOrientZ')
+	print('joz = ' + str(joz))
+	newjox = jox + rx
+	newjoy = joy + ry
+	newjoz = joz + rz
+	print('newjox = ' + str(newjox))
+	print('newjoy = ' + str(newjoy))
+	print('newjoz = ' + str(newjoz))
+	maya.cmds.setAttr(str(obj) + '.jointOrientX', newjox)
+	maya.cmds.setAttr(str(obj) + '.jointOrientY', newjoy)
+	maya.cmds.setAttr(str(obj) + '.jointOrientZ', newjoz)
+	maya.cmds.setAttr(str(obj) + '.rotateX', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateY', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateZ', 0)
+
+
+sel = maya.cmds.ls(selection = True)
+
+for s in sel:
+	zeroJointOriention(s)
+
+
+

@@ -1,0 +1,54 @@
+import maya.cmds
+import random
+import math
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+
+#0=Right, 1=Left, 2=Centre, 3=Misc
+IKcolour = [14,13,17]
+FKColour = [23,31,25]
+splineIKColour = [6,15,29]#[17,21,23]
+clothColour = [9,30,21]
+faceColour = [22,10,26]
+misc = [4,7,11]
+
+SplnCtrlColour = splineIKColour[0]
+ikctrlColour = IKcolour[0]
+fkctrlColour = FKColour[0]
+
+sel = maya.cmds.ls(selection=True)
+sidePrefix = 'L_'
+jointType = 'IK_'
+
+
+if(sidePrefix == 'L_'):
+	SplnCtrlColour = splineIKColour[0]
+	ikctrlColour = IKcolour[0]
+	fkctrlColour = FKColour[0]
+elif(sidePrefix == 'R_'):
+	SplnCtrlColour = splineIKColour[1]
+	ikctrlColour = IKcolour[1]
+	fkctrlColour = FKColour[1]
+else:
+	SplnCtrlColour = splineIKColour[2]
+	ikctrlColour = IKcolour[2]
+	fkctrlColour = FKColour[2]
+
+
+for i in sel:
+	shape = getShapeNodes(i)[0][0]
+	maya.cmds.setAttr(shape + '.overrideEnabled', True)
+	if(jointType == 'IK_'):
+		maya.cmds.setAttr(shape + '.overrideColor', ikctrlColour)
+	elif(jointType == 'FK_'):
+		maya.cmds.setAttr(shape + '.overrideColor', fkctrlColour)
+	else:
+		maya.cmds.setAttr(shape + '.overrideColor', SplnCtrlColour)

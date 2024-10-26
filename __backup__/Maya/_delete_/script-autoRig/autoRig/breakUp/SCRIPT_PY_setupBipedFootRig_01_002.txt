@@ -1,0 +1,1401 @@
+import maya.cmds
+import random
+import math
+
+
+#### START - Common Methods ###############################################################################################################################################################################
+
+#### START - UI Methods     ###############################################################################################################################################################################
+def deleteWindow( windowName ):
+	exist = maya.cmds.window( windowName, exists=True )
+	if(exist == 1):
+		maya.cmds.deleteUI(windowName, window=True)
+#### END   - UI Methods     ###############################################################################################################################################################################
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findName(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	#pvGrp = pvCtrl + '_GRP'
+	pvGrp = maya.cmds.listRelatives( pvCtrl,parent=True )[0]
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+	return pvGrp
+
+def incrementPos(increment,value,axis):
+	vector = (0,0,0)
+	value = value + increment
+	if(axis == 'x'):
+		vector = (value,0,0)
+	elif(axis == 'y'):
+		vector = (0,value,0)
+	else:
+		vector = (0,0,value)
+	return vector
+
+def lockHideAttr(obj,attrArray,lock,hide):
+	for a in attrArray:
+		maya.cmds.setAttr(obj + '.' + a, k=hide,l=lock)
+
+def setJointOriention(obj):
+	rx = maya.cmds.getAttr(str(obj) + '.rotateX')
+	print('rx = ' + str(rx))
+	maya.cmds.setAttr(str(obj) + '.jointOrientX', rx)
+	ry = maya.cmds.getAttr(str(obj) + '.rotateY')
+	print('ry = ' + str(ry))
+	maya.cmds.setAttr(str(obj) + '.jointOrientY', ry)
+	rz = maya.cmds.getAttr(str(obj) + '.rotateZ')
+	print('rz = ' + str(rz))
+	maya.cmds.setAttr(str(obj) + '.jointOrientZ', rz)
+	maya.cmds.setAttr(str(obj) + '.rotateX', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateY', 0)
+	maya.cmds.setAttr(str(obj) + '.rotateZ', 0)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def getDistance2Vectors(pointA,pointB):
+	sp = getWStransform(pointA)
+	ep = getWStransform(pointB)
+	distance = math.sqrt(  math.pow(sp[0]-ep[0],2) + math.pow(sp[1]-ep[1],2) + math.pow(sp[2]-ep[2],2)  )
+	return distance
+
+def renamePrefixSuffix(array,prefix,suffix):
+	returnArray = []
+	for item in array:
+		temp = maya.cmds.rename(item,prefix + item + suffix)
+		returnArray.append(temp)
+
+	return returnArray
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,groupArray):
+	newArray = []
+	#brake = False
+	print('createIKjoints :: jointArray = ' + str(jointArray))
+	endJoint = jointArray[len(jointArray)-1]
+	print('createIKjoints :: endJoint = ' + str(endJoint))
+	maya.cmds.select( clear=True )
+	duplicateJoint = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicateJoint, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicateJoint, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		print('createIKjoints :: newn = ' + str(newn))
+		print('createIKjoints :: duplicateJoint = ' + str(duplicateJoint))
+		j = maya.cmds.rename(duplicateJoint,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		print('createIKjoints :: child = ' + str(duplicateJoint))
+		if(child != None):
+			if(len(child) == 1):
+				duplicateJoint = child[0]
+			else:
+				print('createIKjoints :: child = ' + str(child))
+				print('createIKjoints :: ' + str(j) + ' has a branch of Multiple Joints')
+				for c in child:
+					print('createIKjoints :: c = ' + str(c))
+					gc = maya.cmds.listRelatives(c,c=True,ad=True,f=True)
+					print('createIKjoints :: gc = ' + str(gc))
+					if(gc != None):
+						for g in gc:
+							prefixToIgnore = g.rfind('|')
+							test = g[prefixToIgnore+1:len(g)]
+							print('createIKjoints :: test = ' + str(test))
+							print('createIKjoints :: endJoint = ' + str(endJoint))
+							if(test == endJoint):
+								print('createIKjoints :: c has the end joint = ' + str(c))
+								duplicateJoint = c
+								print('createIKjoints :: duplicateJoint = ' + str(duplicateJoint))
+					else:	
+						print('createIKjoints :: deleting ' + str(c))
+						maya.cmds.delete(c)
+						duplicateJoint = maya.cmds.listRelatives(j,c=True,ad=True,f=True)[0]
+
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],groupArray[len(groupArray)-1])
+	return newArray
+
+def copySelectedJoints(jointArray,sidePrefix,jointType,groupArray):
+	prefix = sidePrefix + jointType
+	newArray = []
+	print('createIKjoints :: jointArray = ' + str(jointArray))
+	maya.cmds.select( clear=True )
+	duplicateJoint = maya.cmds.duplicate(jointArray[0])[0]
+	n = findNamePrefix(jointArray[0],sidePrefix)
+	j = maya.cmds.rename(duplicateJoint,prefix + n)
+	newArray.append(j)
+
+	allChildren = maya.cmds.listRelatives(j,ad=True,f=True)
+	
+	#DELETE UNWANTED JOINTS
+	for c in allChildren:
+		prefixToIgnore = c.rfind('|')
+		n = c[prefixToIgnore+1:len(c)]
+		delete = True
+		for i in range(1,len(jointArray),1):
+			print('createIKjoints :: compare ' + str(n) + ' : ' + str(jointArray[i]))
+			if(n == jointArray[i]):
+				delete = False
+
+		if(delete == True):
+			maya.cmds.delete(c)
+		else:
+			maya.cmds.rename(c,prefix + n)
+
+	allChildren = maya.cmds.listRelatives(j,ad=True,f=True)
+	revAllChildren = reverseArray(allChildren)
+	print('createIKjoints :: revAllChildren = ' + str(revAllChildren))
+	for c in revAllChildren:
+		newArray.append(c)
+
+	print('createIKjoints :: newArray = ' + str(newArray))
+
+	maya.cmds.parent(newArray[0],groupArray[len(groupArray)-1])
+	return newArray
+
+							
+def createIKhandles(prefix,limbType,type,startJoint,endJoint,pvCtrl,curve,grp):
+	ikh = prefix + limbType + 'ikHandle'
+	if(type != 'ikSplineSolver'):
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+		print('h = ' + str(h))
+		if(type == 'ikRPsolver'):
+			maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	else:
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type, ccv = False, pcv = False, c = curve)
+		print('h = ' + str(h))
+		print('createIKhandles :: grp = ' + str(grp) )
+		maya.cmds.parent(h[0],grp)
+				
+	return h
+
+def getTweenJoints(jointArray,howManyTweenJoints):
+	increment = 0
+	newArray = []
+	#print('getTweenJoints :: increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('getTweenJoints :: j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('getTweenJoints :: increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('getTweenJoints :: newArray = ' + str(newArray) )
+
+	return newArray
+
+def getShapeNodes(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape[0])
+	return (getShape, howManyShapes)
+
+def aimControlsToJoints(selectedJoint,obj,jointAimAxis):
+	maya.cmds.parent(obj,selectedJoint,a=True)
+	maya.cmds.setAttr(obj + '.rx', 0 )
+	maya.cmds.setAttr(obj + '.ry', 90 )
+	maya.cmds.setAttr(obj + '.rz', 0 )
+	maya.cmds.parent(obj,w=True,a=True)
+
+def combineArrays(array1,array2):
+	print('combineArrays :: array1 = ' + str(array1))
+	returnArray = []
+	for b in array1:
+		returnArray.append(b)
+	for a in array2:
+		returnArray.append(a)
+	print('combineArrays :: array1 = ' + str(array1))
+	print('combineArrays :: array2 = ' + str(array2))
+	return returnArray
+
+def findNameFromContextArray(array,txt):
+	value = None
+	for a in array:
+		test = a.endswith(txt)
+		if(test == True):
+			value = a
+	return value
+
+def findNameFromContext(name,txt):
+	value = None
+	test = name.endswith(txt)
+	if(test == True):
+		value = name
+	return value
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+def setConstraint(contraintType, source, destination, offset, name):
+	constraint = None
+	type = 'point'
+	if(contraintType == 'parent'):
+		type = 'parent'
+		if(name != None):
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.parentConstraint(source,destination, mo=offset)
+	elif(contraintType == 'point'):
+		if(name != None):
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.pointConstraint(source,destination, mo=offset)
+	elif(contraintType == 'orient'):
+		if(name != None):
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.orientConstraint(source,destination, mo=offset)
+	else:
+		if(name != None):
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset, name = name)
+		else:
+			constraint = maya.cmds.aimConstraint(source,destination, mo=offset)
+
+	return (constraint[0],type)
+
+def createArrowCtrl(name,colour,axis,scle):
+	maya.cmds.curve(p=[(0,0,-14),(0,0,-14),(-4,0,-10),(-4,0,-10),(-4,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-4),(-10,0,-4),(-10,0,-4),(-14,0,0),(-14,0,0),(-14,0,0),(-10,0,4),(-10,0,4),(-10,0,4),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(-4,0,10),(-4,0,10),(-4,0,10),(0,0,14),(0,0,14),(0,0,14),(4,0,10),(4,0,10),(4,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,4),(10,0,4),(10,0,4),(14,0,0),(14,0,0),(14,0,0),(10,0,-4),(10,0,-4),(10,0,-4),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10),(4,0,-10),(4,0,-10),(4,0,-10),(0,0,-14),(0,0,-14)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,13,13,14,14,14,15,15,15,16,16,16,17,17,17,18,18,18,19,19,19,20,20,20,21,21,21,22,22,22,23,23,23,24,24,24])
+	ctrl = maya.cmds.ls(selection=True)
+	print('ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	print('shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(name) + '.rotate' + str(axis), 90)
+	maya.cmds.setAttr(str(name) + '.scaleX', scle)
+	maya.cmds.setAttr(str(name) + '.scaleY', scle)
+	maya.cmds.setAttr(str(name) + '.scaleZ', scle)
+	maya.cmds.makeIdentity( str(name), apply=True, t=1, r=1, s=1 )
+	return name
+
+def createCrossCtrl(name,colour,axis,scle):
+	maya.cmds.curve(p=[(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12])
+	ctrl = maya.cmds.ls(selection=True)
+	print('ctrl = ' + str(ctrl))
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	print('shpe[0][0] = ' + str(shpe[0][0]))
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0][0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(name) + '.rotate' + str(axis), 90)
+	maya.cmds.setAttr(str(name) + '.scaleX', scle)
+	maya.cmds.setAttr(str(name) + '.scaleY', scle)
+	maya.cmds.setAttr(str(name) + '.scaleZ', scle)
+	maya.cmds.makeIdentity( str(name), apply=True, t=1, r=1, s=1 )
+	return name
+		
+def createCurve(objArray,name,grp):
+	howManyObjs = len(objArray)
+	print ('howManyObjs = ' + str(howManyObjs))
+	points =''
+	pos1 = (0,0,0)
+	for i in range(0,howManyObjs,1):
+		print ('i = ' + str(i))
+		if(i != 1):
+			pos = getWStransform(objArray[i])
+			p = '(' + str(pos[0]) + ',' + str(pos[1]) + ',' + str(pos[2]) + ')'
+			print('p = ' + str(p))
+			if(i != howManyObjs-1):
+				p = p + ', '
+		else:
+			pos1 = getWStransform(objArray[i])
+			print('pos1 = ' + str(pos1))
+		points = points + p
+		print('points = ' + str(points))
+
+	eval('maya.cmds.curve(p=[' + points + '])')
+	curve = maya.cmds.ls(selection=True)
+	print ('curve = ' + str(curve))
+	rename = maya.cmds.rename(curve,name)
+	maya.cmds.parent(rename,grp)
+	setWStransform(str(rename) + '.cv[1]',pos1)
+
+	#returns name of curve and number of CV's
+	return (rename,howManyObjs-1)
+
+def clusterCurve(curve,nme,grp):
+	returnCV = []
+	maya.cmds.select(curve + '.cv[*]')
+	cvs = maya.cmds.ls(selection=True)
+	print ('cvs = ' + str(cvs))
+	print('cvs length = ' + str(len(cvs)))
+	rf = cvs[0].rfind(':')
+	print ('rf = ' + str(rf))
+	lenCVs = len(cvs[0])
+	print ('lenCVs = ' + str(lenCVs))
+	number = int(cvs[0][(rf+1):(lenCVs-1)])
+	cvName = cvs[0][0:rf-2]
+	print ('number = ' + str(number))
+	print ('cvName = ' + str(cvName))
+	
+	listOfClusters = []
+	for i in range(0,number+1,1):
+		returnCV.append(str(cvName) + '[' + str(i) + ']')
+		print ('clusterCurve : returnCV = ' + str(returnCV))
+		c = maya.cmds.cluster(str(curve) + '.cv[' + str(i) + ']')
+		nn = maya.cmds.rename(c[1],nme+str(i+1))
+		listOfClusters.append(nn)
+		if( grp != None ):
+			maya.cmds.parent(nn,grp)
+
+	print ('listOfClusters = ' + str(listOfClusters))
+	return (listOfClusters,returnCV)
+
+def reverseArray(array):
+	print ('reverseArray :: array = ' + str(array))
+	retrunArray = []
+	for i in range(len(array)-1,-1,-1):
+		retrunArray.append(array[i])
+	print ('reverseArray :: retrunArray = ' + str(retrunArray))
+	return retrunArray
+
+#### END   - Common Methods ###############################################################################################################################################################################
+
+#### START - Insert Extra Joints ##########################################################################################################################################################################
+def insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints):
+	print('insertExtraJoints00 :: selectedJoints = ' + str(selectedJoints))
+	maya.cmds.select( clear=True )
+	oldMasterJoints = []
+	howManySelJoints = len(selectedJoints)
+	alljoints = []
+	jointsInserted = []
+	print('insertExtraJoints00 :: howManySelJoints = ' + str(howManySelJoints))
+	for i in range(0,howManySelJoints-1,1):
+		print('insertExtraJoints00 :: i = ' + str(i))
+		masterJoint = selectedJoints[i]
+		alljoints.append(masterJoint)
+		print('insertExtraJoints00 :: masterJoint = ' + str(masterJoint))
+		print('insertExtraJoints00 :: selectedJoints[i] = ' + str(selectedJoints[i]))
+		t = maya.cmds.rename(selectedJoints[i],'temp_' + masterJoint)
+		oldMasterJoints.append(t)
+		print('insertExtraJoints00 :: oldMasterJoints = ' + str(oldMasterJoints))
+		getOldMasterJointPos = getWStransform(oldMasterJoints[i])
+		masterJointName = findName(masterJoint,sidePrefix)
+		translateAxis = '.t' + jointAimAxis
+		jointDistance = getDistance2Vectors(oldMasterJoints[i],selectedJoints[i+1])
+		jointTweendistance = jointDistance / (howManyTweenJoints + 1)
+		getMasterJointPos = getWStransform(oldMasterJoints[i])
+		previousJoint = maya.cmds.joint( n=masterJoint)
+
+		for j in range(1,howManyTweenJoints+1,1):
+			v = incrementPos(jointTweendistance,(j-1)*jointTweendistance,jointAimAxis)
+			previousJoint = maya.cmds.joint( previousJoint,n=sidePrefix + jointTypePrefix[i] + str(j), p=v )
+			alljoints.append(previousJoint)
+			jointsInserted.append(previousJoint)
+
+		setWStransform(masterJoint,getOldMasterJointPos)
+
+		if(jointAimAxis == 'x'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(1,0,0), skip=["x"] )
+			maya.cmds.delete(aim)
+		elif(jointAimAxis == 'y'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,1,0), skip=["y"] )
+			maya.cmds.delete(aim)
+		else:
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,0,1), skip=["z"] )
+			maya.cmds.delete(aim)
+	
+		setJointOriention(masterJoint)
+		parent = maya.cmds.listRelatives( oldMasterJoints[i], parent=True )
+		print('insertExtraJoints00 :: parent = ' + str(parent))
+		if(parent != None):
+			maya.cmds.parent(masterJoint,parent[0])
+		
+		maya.cmds.parent(selectedJoints[i+1],previousJoint)
+		maya.cmds.delete(oldMasterJoints[i])
+		maya.cmds.select( clear=True )
+
+	alljoints.append(selectedJoints[howManySelJoints-1])
+	print('insertExtraJoints00 :: alljoints = ' + str(alljoints))
+	print('insertExtraJoints00 :: jointsInserted = ' + str(jointsInserted))
+	return(jointsInserted,alljoints)
+
+def insertExtraJoints06(jointArray,howManyJointsInserted,sidePrefix,prefix,suffix,jointAimAxis):
+	jointsInserted = []
+	allJoints = []
+	print('insertExtraJoints06 :: howManyJointsInserted = ' + str(howManyJointsInserted))
+	print('insertExtraJoints06 :: jointArray = ' + str(jointArray))
+	
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		
+		increment = 1
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('insertExtraJoints06 :: nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i]
+		print('insertExtraJoints06 :: currentJoint = ' + str(currentJoint))
+		previousJoint = jointArray[i]
+		print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+		translate = maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted+1))
+		print('insertExtraJoints06 :: jointSpacing = ' + str(jointSpacing))
+		allJoints.append(currentJoint)
+		#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+		for j in range(0,howManyJointsInserted,1):
+			print('insertExtraJoints06 :: j = ' + str(j))
+			insertJoint = maya.cmds.insertJoint(previousJoint)
+			createJoint = maya.cmds.rename(insertJoint,prefix + jointArray[i] + '_' + str(increment)  + suffix)
+			jointsInserted.append(createJoint)
+			#print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+			allJoints.append(createJoint)
+			#print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			previousJoint = createJoint
+			print('insertExtraJoints06 :: previousJoint = ' + str(previousJoint))
+			increment = increment + 1
+
+		maya.cmds.setAttr (nextJoint + '.t' + jointAimAxis,jointSpacing)
+		print ('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+		increment = 1
+
+	allJoints.append(nextJoint)
+	print('insertExtraJoints06 :: jointsInserted = ' + str(jointsInserted))
+	print('insertExtraJoints06 :: allJoints = ' + str(allJoints))
+	return (jointsInserted,allJoints)
+
+#### END  - Insert Extra Joints ##########################################################################################################################################################################	
+#### START  - SETUP IK SYSTEM   ##########################################################################################################################################################################	
+def createRoll(prefix,array,maxRoll,remapCurveValues,jointRollAxis,controlRollAxis,control,invert):
+	print('createRoll :: array = ' + str(array))
+	print('createRoll :: prefix = ' + str(prefix))
+	#maxRoll = 120
+	whichAxis = ['X', 'Y', 'Z']
+
+	#cREATE TEMP REMAP SYSTEM
+	inputNode = maya.cmds.shadingNode('multiplyDivide',n='rollInput_multiplyDivide' + '1',au=True)
+	resultNode = maya.cmds.shadingNode('multiplyDivide',n='rollResult_multiplyDivide' + '1',au=True)
+	rollRemapNode = maya.cmds.shadingNode('remapValue',n='roll_remap' + '1',au=True) 
+	source =  inputNode + '.outputX'
+	desitination =  rollRemapNode + '.inputValue'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+
+	source =  rollRemapNode + '.outValue'
+	desitination =  resultNode + '.input1X'  
+
+	maya.cmds.connectAttr(source, desitination, force=True)
+	i = 0
+	for v in remapCurveValues:
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_Position',v[0])
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_FloatValue',v[1])
+		maya.cmds.setAttr(rollRemapNode + '.value[' + str(i) + '].value_Interp',v[2])
+		i = i + 1
+	
+	maya.cmds.setAttr(rollRemapNode + '.inputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.inputMax',maxRoll)
+	maya.cmds.setAttr(rollRemapNode + '.outputMin',0)
+	maya.cmds.setAttr(rollRemapNode + '.outputMax',1)
+
+	howManyMultiplyNodes = math.ceil(float(len(array))  / 3.0)
+	print('createRoll :: len(array)-1 = ' + str(len(array)-1))
+	print('createRoll :: maxRoll = ' + str(maxRoll))
+	fraction = maxRoll / (len(array)-1)
+	print('createRoll :: fraction = ' + str(fraction))
+	increment = 0#maxRoll
+	index = 0
+	brk = 0
+	multiplyNodes = []
+	groupNodes = []
+	for i in range(0,howManyMultiplyNodes,1):
+		rollMult = maya.cmds.shadingNode('multiplyDivide',n=prefix + 'roll_multiplyDivide' + '1',au=True)
+		multiplyNodes.append(rollMult)
+		for j in range(0,3,1):
+			if(brk == 0):
+				print('createRoll :: increment = ' + str(increment))
+				maya.cmds.setAttr(inputNode + '.input1X', increment * invert)
+				result = maya.cmds.getAttr(resultNode + '.outputX')
+				print('createRoll ::result = ' + str(result))
+				rollGroup = maya.cmds.group(em=True, n=(array[index] + '_ROLL'))
+				print('createRoll :: rollGroup = ' + str(rollGroup))
+				groupNodes.append(rollGroup)
+				maya.cmds.parent(rollGroup,array[index],r=True)
+				#loc = maya.cmds.spaceLocator(n=(array[index] + '_LOC'))
+				#maya.cmds.parent(loc,rollGroup,r=True)
+				maya.cmds.setAttr(rollMult + '.input2' + str(whichAxis[j]), result)
+				source =  control + '.rotate' + controlRollAxis
+				desitination = rollMult + '.input1' + str(whichAxis[j])
+				maya.cmds.connectAttr(source, desitination, force=True)
+				source =  rollMult + '.output' + whichAxis[j]
+				desitination = rollGroup + '.rotate' + jointRollAxis
+				maya.cmds.connectAttr(source, desitination, force=True)
+				increment = increment + fraction
+				if(index == len(array)-1):
+					brk = 1
+					print('createRoll ::brk = ' + str(brk))
+				index = index + 1
+		
+	maya.cmds.delete(inputNode)
+	maya.cmds.delete(resultNode)
+	maya.cmds.delete(rollRemapNode)
+
+	return (multiplyNodes,groupNodes)
+
+def connectRoll(rollArray,array,jointRollAxis):
+	whichAxis = ['X', 'Y', 'Z']
+	brk = 0
+	index = 0
+	groupNodes = []
+	for i in range(0,len(rollArray),1):
+		for j in range(0,3,1):
+			if(brk == 0):
+				rollGroup = maya.cmds.group(em=True, n=(array[index] + '_ROLL'))
+				groupNodes.append(rollGroup)
+				maya.cmds.parent(rollGroup,array[index],r=True)
+				source =  rollArray[i] + '.output' + whichAxis[j]
+				desitination = rollGroup + '.rotate' + jointRollAxis
+				maya.cmds.connectAttr(source, desitination, force=True)
+				if(index == len(array)-1):
+					brk = 1
+					print('createRoll ::brk = ' + str(brk))
+				index = index + 1
+	
+	return groupNodes
+
+def addStiffness(prefix,jointArray,ctrl):
+	stiffnessAttr = 'stiffness'
+	mainStiffness = ctrl + '.' + stiffnessAttr
+	print('mainStiffness = ' + str(mainStiffness))
+
+	doesStiffnessExist = maya.cmds.attributeQuery( stiffnessAttr, node=ctrl, exists=True )
+	if( doesStiffnessExist != True):
+		maya.cmds.addAttr(ctrl, longName='stiffness', attributeType='double', min=0, max=10, dv=0 )
+		maya.cmds.setAttr(mainStiffness,edit=True, keyable=True)
+
+	print('len(jointArray) = ' + str(len(jointArray)))
+	if(len(jointArray) != 0):
+		stretchNormaliseNode = prefix + 'stretchNormalise_setRange'
+		conn = maya.cmds.listConnections( mainStiffness, d=True, s=False, t='setRange' )
+		print('conn = ' + str(conn))
+		setRangeNode = ''
+		if( conn == None ):
+			setRangeNode = maya.cmds.shadingNode('setRange',n=stretchNormaliseNode,au=True)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		elif( len(conn) == 1):
+			setRangeNode = conn[0]
+			print('setRangeNode = ' + str(setRangeNode))
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+			maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+		else:
+			print('ERROR :: ' + mainStiffness + ' has too many setRange nodes connected to it!!!')
+
+		socketAttribute1 = '.valueY'
+		connectorAttribute1 = '.stiffness'
+
+		connectorAttribute2 = '.outValueY'
+		socketAttribute2 = '.stiffness'
+
+		socket1 = setRangeNode + socketAttribute1
+		connector1 = mainStiffness
+		maya.cmds.connectAttr(connector1, socket1, force=True)
+
+		for i in range(0, len(jointArray), 1):
+			connector2 = setRangeNode + connectorAttribute2
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'X')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	
+			socket2 = jointArray[i] + (socketAttribute2 + 'Y')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+
+			socket2 = jointArray[i] + (socketAttribute2 + 'Z')
+			maya.cmds.connectAttr(connector2, socket2, force=True)
+	else:
+		print('No Tween Joints to connect the Stiffness attribute')
+
+def setUpIKFKswitch(prefix,array,ctrl,ik,fk):
+	checkAttrExist(ctrl,'IkFk','double',0,10,0,True,False)
+	print('setUpIKFKswitch :: prefix = ' + str(prefix))
+	print('setUpIKFKswitch :: array = ' + str(array))
+	print('setUpIKFKswitch :: ctrl = ' + str(ctrl))
+	setRangeNode = prefix + 'IKFK_setRange'
+	if(maya.cmds.objExists(setRangeNode) == False):
+		setRangeNode = maya.cmds.shadingNode('setRange',n=prefix + 'IKFK_setRange',au=True)
+
+	destination =  setRangeNode + '.valueX'
+	source =  ctrl + '.IkFk'
+	testConnection = maya.cmds.isConnected( source, destination )
+	if(testConnection == 0):
+		maya.cmds.connectAttr(source, destination, force=True)
+	
+	destination =  setRangeNode + '.valueY'
+	testConnection = maya.cmds.isConnected( source, destination )
+	if(testConnection == 0):
+		maya.cmds.connectAttr(source, destination, force=True)
+	
+	for c in array:
+		if(c != None):
+			print('setUpIKFKswitch :: c[0] = ' + str(c[0]))
+			attr = maya.cmds.listAttr( c[0] )
+			print('setUpIKFKswitch :: attr = ' + str(attr))
+			conn1 = None
+			conn2 = None
+			for i in range(len(attr)-1,len(attr)-6,-1):
+				#print('setUpIKFKswitch :: i = ' + str(i))
+				#print('setUpIKFKswitch :: attr[i] = ' + str(attr[i]))
+				conn1 = findNameFromContext(attr[i],'W0')
+				print('setUpIKFKswitch :: conn1 = ' + str(conn1))	
+				if(conn1 != None):
+					break
+
+			for i in range(len(attr)-1,len(attr)-6,-1):
+				conn2 = findNameFromContext(attr[i],'W1')
+				print('setUpIKFKswitch :: conn2 = ' + str(conn2))
+				if(conn2 != None):
+					break
+
+			if(conn1 != None):
+				if(ik == True):
+					destination = c[0] + '.' + conn1
+					print('setUpIKFKswitch :: destination = ' + str(destination))
+					source =  setRangeNode + '.outValueX'
+					maya.cmds.connectAttr(source, destination, force=True)
+					if(fk == True):
+						if(conn2 != None):
+							destination = c[0] + '.' + conn2
+							source =  setRangeNode + '.outValueY'
+							maya.cmds.connectAttr(source, destination, force=True)
+							maya.cmds.setAttr(setRangeNode + '.oldMinX',10)
+							maya.cmds.setAttr(setRangeNode + '.oldMinY',0)
+							maya.cmds.setAttr(setRangeNode + '.oldMaxX',0)
+							maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+							maya.cmds.setAttr(setRangeNode + '.minX',1)
+							maya.cmds.setAttr(setRangeNode + '.minY',0)
+							maya.cmds.setAttr(setRangeNode + '.maxX',0)
+							maya.cmds.setAttr(setRangeNode + '.maxY',1)
+					else:
+						maya.cmds.setAttr(setRangeNode + '.oldMinX',10)
+						maya.cmds.setAttr(setRangeNode + '.oldMinY',0)
+						maya.cmds.setAttr(setRangeNode + '.oldMaxX',0)
+						maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+						maya.cmds.setAttr(setRangeNode + '.minX',1)
+						maya.cmds.setAttr(setRangeNode + '.minY',1)
+						maya.cmds.setAttr(setRangeNode + '.maxX',1)
+						maya.cmds.setAttr(setRangeNode + '.maxY',1)
+			else:
+				if(fk == True):
+					maya.cmds.setAttr(ctrl + '.IkFk',10)
+					destination = c[0] + '.' + conn1
+					source =  setRangeNode + '.outValueY'
+					maya.cmds.connectAttr(source, destination, force=True)
+					maya.cmds.setAttr(setRangeNode + '.oldMinX',0)
+					maya.cmds.setAttr(setRangeNode + '.oldMinY',0)
+					maya.cmds.setAttr(setRangeNode + '.oldMaxX',10)
+					maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+					maya.cmds.setAttr(setRangeNode + '.minX',1)
+					maya.cmds.setAttr(setRangeNode + '.minY',1)
+					maya.cmds.setAttr(setRangeNode + '.maxX',1)
+					maya.cmds.setAttr(setRangeNode + '.maxY',1)
+
+	print('setUpIKFKswitch :: setRangeNode = ' + str(setRangeNode))
+	return setRangeNode
+
+def setUpIkFfVisibilitySwitch(prefix,ikArray,fkArray,ctrl,attribute,setRange):
+	checkAttrExist(ctrl,attribute,'double',0,10,0,True,False)
+	ikFkSwitchSetRange = prefix + 'ikFk_vis_switch_setRange'
+	setRangeNode = ''
+
+	source = ctrl + '.' + attribute
+
+	if maya.cmds.objExists(setRange):
+		setRangeNode = setRange
+	else:
+		if(maya.cmds.objExists(ikFkSwitchSetRange) == False):
+			setRangeNode = maya.cmds.shadingNode('setRange',n=ikFkSwitchSetRange,au=True)
+			maya.cmds.setAttr(setRangeNode + '.oldMinX',10)
+			maya.cmds.setAttr(setRangeNode + '.oldMinY',0)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxX',0)
+			maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+			maya.cmds.setAttr(setRangeNode + '.minX',1)
+			maya.cmds.setAttr(setRangeNode + '.minY',0)
+			maya.cmds.setAttr(setRangeNode + '.maxX',0)
+			maya.cmds.setAttr(setRangeNode + '.maxY',1)
+			
+			destination = setRangeNode + '.valueX'
+			maya.cmds.connectAttr(source, destination, force=True)
+
+			destination = setRangeNode + '.valueY'
+			maya.cmds.connectAttr(source, destination, force=True)
+		else:
+			setRangeNode = ikFkSwitchSetRange
+
+	source = setRangeNode + '.outValueX'
+	print('setUpIkFfVisibilitySwitch :: ikArray = ' + str(ikArray))
+
+	if(len(ikArray) > 0):
+		print('setUpIkFfVisibilitySwitch :: ik ')
+		for c in ikArray:
+			if maya.cmds.objExists(c):
+				print('setUpIkFfVisibilitySwitch :: ik : c = ' + str(c))
+				destination = c + '.visibility'
+				maya.cmds.connectAttr(source, destination, force=True)
+
+	source = setRangeNode + '.outValueY'
+
+	if(len(fkArray) > 0):
+		print('setUpIkFfVisibilitySwitch :: fk ')
+		for c in fkArray:
+			if maya.cmds.objExists(c):
+				print('setUpIkFfVisibilitySwitch :: fk : c = ' + str(c))
+				destination = c + '.visibility'
+				maya.cmds.connectAttr(source, destination, force=True)
+
+	print('setUpIkFfVisibilitySwitch :: setRangeNode = ' + str(setRangeNode))
+	return setRangeNode
+
+def setColour(array,colour):
+	for a in array:
+		if maya.cmds.objExists(a):
+			shape = getShapeNodes(a)
+			maya.cmds.setAttr(shape[0][0] + '.overrideEnabled',1)
+			maya.cmds.setAttr(shape[0][0] + '.overrideColor', colour)
+
+def setUpIKstretch2(prefix,jointAimAxis,limbTypeName,ikJointArray,howManyNodes,mainCTRL,startCTRL,ikHndle,dimGroup):
+	#select second and last joint of Ik Chain, then the ctrl
+	howManyJoints = len(ikJointArray)
+	
+	autoSwitchAttr = 'autoStretchIK'#must be boolean
+	stretchIKAttr = 'stretchIK'
+	stretchNormaliseNode = prefix + 'stretchNormalise_setRange'
+
+	IKNormaliseNode = prefix + 'normalize_multiplyDivide'
+	IKMultiplierNode = prefix + 'multiplier_multiplyDivide'
+	IKConditionNode = prefix + 'autoStretch_condition'
+	IKScaleLimiterNode = prefix + 'limit_multiplyDivide'
+	IKAutoStretchBlendNode = prefix + 'autoStretch_blend'
+	IKStretchBlendNode = prefix + 'stretch_blend'
+	IKStretchDampener = prefix + 'StretchDampener_condition'
+	IKStretchRemapNode = prefix + 'stretchDampenRemap_remapValue'
+	IKStretchBlendNode = prefix + 'stretchDampenBlend_blend'
+	IKDampenValueNode = prefix + 'DampenValue_multiplyDivide'
+	dampenAmount = 0.960
+
+	startJoint = ikJointArray[0]
+	print('setUpIKstretch :: startJoint = ' + str(startJoint))
+	endJoint = ikJointArray[len(ikJointArray)-1]
+	print('setUpIKstretch :: endJoint = ' + str(endJoint))
+
+	distanceName = prefix + 'distanceDimension1'
+
+	distanceNode = maya.cmds.distanceDimension( sp=(-2, 0, 0), ep=(2, 0, 0) )
+	
+	print('setUpIKstretch :: dimGroup = ' + str(dimGroup))
+	maya.cmds.parent(distanceNode,dimGroup)
+	distanceTrans = maya.cmds.listRelatives(distanceNode,p=True,f=True)
+	distLocators = maya.cmds.listConnections(distanceNode,t='locator')
+	print('setUpIKstretch :: distLocators = ' + str(distLocators))
+	startLoc = maya.cmds.rename(distLocators[0],prefix + 'start_dim_LOC')
+	endLoc = maya.cmds.rename(distLocators[1],prefix + 'end_dim_LOC')
+	startLocPos = getWStransform(startJoint)
+	setWStransform(startLoc,startLocPos)
+	endLocPos = getWStransform(endJoint)
+	setWStransform(endLoc,endLocPos)
+	distanceName = maya.cmds.rename(distanceTrans[0],distanceName)
+	print('setUpIKstretch :: distanceName = ' + str(distanceName))
+
+	print('setUpIKstretch :: startLoc = ' + str(startLoc))
+	print('setUpIKstretch :: startCTRL = ' + str(startCTRL))
+	#startParent = None
+	maya.cmds.parent(startLoc,startCTRL,a=True)
+	maya.cmds.parent(endLoc,ikHndle,a=True)
+	#if(limbTypeName == 'arm_'):
+	#	maya.cmds.parent(startLoc,startCTRL,a=True)
+	#	maya.cmds.parent(endLoc,ikHndle,a=True)
+	#else:
+	#	endParent = maya.cmds.parentConstraint(endLoc,endCTRL,mo=True)
+	#	maya.cmds.delete(endParent)
+	#	print('setUpIKstretch :: endLoc = ' + str(endLoc))
+	#	print('setUpIKstretch :: mainCTRL = ' + str(mainCTRL))
+	#	maya.cmds.parent(endLoc,mainCTRL,a=True)
+	#	maya.cmds.parent(startLoc,startCTRL,a=True)
+	
+	
+	#START///////////////////////////////////CREATE CONDITION, NORMALISE MULTIPLYDIVIDE NODE AND 
+	#START///////////////////////////////////CONNECT THE DISTANCE NODES DISTANCE ATTRIBUTE TO NORMALISE MULTIPLYDIVIDE NODES INPUT1X 
+	#START///////////////////////////////////CONNECT THE NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+	
+	#create set range node to normalise the stretch IK attribute*********************START**********create set range node to normalise the stretch IK attribute
+	checkAttrExist(mainCTRL ,stretchIKAttr,'double',0,10,0,True,True)
+	setRangeNode = maya.cmds.shadingNode('setRange',n=stretchNormaliseNode,au=True)
+	connector = mainCTRL + '.' + stretchIKAttr
+	socket = setRangeNode + '.valueX'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(setRangeNode + '.oldMaxX', 10)
+	maya.cmds.setAttr(setRangeNode + '.maxX', 1)
+	#create set range node to normalise the stretch IK attribute*********************END**********create set range 
+	
+	#CREATE NORMALISE MULTIPLYDIVIDE NODE************************************************************START**********CREATE NORMALISE MULTIPLYDIVIDE NODE
+	normaliseNode = maya.cmds.shadingNode('multiplyDivide',n=IKNormaliseNode + '1',au=True)
+	connector = distanceName + '.distance'
+	socket = normaliseNode + '.input1X'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#SET INPUT2X TO DISTANCE VALUE AND SET **************************************************************START**********SET INPUT2X TO DISTANCE VALUE AND SET 
+	#MULTIPLYDIVIDE NODES OPERATION TO DIVIDE************************************************************START**********MULTIPLYDIVIDE NODES OPERATION TO DIVIDE
+	socketAttribute = '.input2X'
+
+	maya.cmds.setAttr(normaliseNode + '.operation', 2)
+	distance = maya.cmds.getAttr(connector)
+	print ('setUpIKstretch :: distance = ' + str(distance))
+
+	maya.cmds.setAttr(normaliseNode + socketAttribute, distance) 
+	#set Normalise nodes Z output to 1; ie 1 / 1 = 1. This will be connected to $stretch input 1R
+	maya.cmds.setAttr(normaliseNode + '.input1Z', 1)
+	maya.cmds.setAttr(normaliseNode + '.input2Z', 1)
+
+	#SET INPUT2X TO DISTANCE VALUE AND SET **************************************************************END**********SET INPUT2X TO DISTANCE VALUE AND SET 
+	#MULTIPLYDIVIDE NODES OPERATION TO DIVIDE************************************************************END**********MULTIPLYDIVIDE NODES OPERATION TO DIVIDE
+
+	#CREATE NORMALISE MULTIPLYDIVIDE NODE************************************************************END**********CREATE NORMALISE MULTIPLYDIVIDE NODE
+
+	stretchRemapNode = maya.cmds.shadingNode('remapValue',n=IKStretchRemapNode + '1',au=True) 
+	socket =  stretchRemapNode + '.inputValue'
+	connector =  normaliseNode + '.outputX'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_Position',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_FloatValue',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[0].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[1].value_Position',1.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[1].value_FloatValue',0.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[1].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_FloatValue',1.0)
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_Position',0.5)
+	maya.cmds.setAttr(stretchRemapNode + '.value[2].value_Interp',2)
+
+	maya.cmds.setAttr(stretchRemapNode + '.inputMin',0)
+	maya.cmds.setAttr(stretchRemapNode + '.inputMax',2)
+
+	StretchBlendNode = maya.cmds.shadingNode('blendColors',n=IKStretchBlendNode + '1',au=True) 
+
+	socket =  StretchBlendNode + '.blender'
+	connector =  stretchRemapNode + '.outValue'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	dampenValueNode = maya.cmds.shadingNode('multiplyDivide',n=IKDampenValueNode + '1',au=True) 
+	
+	maya.cmds.setAttr(dampenValueNode + '.input1X',dampenAmount)
+	maya.cmds.setAttr(dampenValueNode + '.input1Y',1)
+	socket = StretchBlendNode + '.color2R'
+	connector = dampenValueNode + '.outputX'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	socket = StretchBlendNode + '.color1R'
+	connector = dampenValueNode + '.outputY'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	stretchDampenerNode = maya.cmds.shadingNode('condition',n=IKStretchDampener + '1',au=True) 
+	socket =  stretchDampenerNode + '.firstTerm'
+	connector =  StretchBlendNode + '.outputR'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(stretchDampenerNode + '.operation',0)
+	maya.cmds.setAttr(stretchDampenerNode + '.secondTerm',1)
+	maya.cmds.setAttr(stretchDampenerNode + '.colorIfTrueR',1)
+	
+	socket =  stretchDampenerNode + '.colorIfFalseR'
+	connector =  StretchBlendNode + '.outputR'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#??????????????????????????THIS IS REDUNDANT??????????????????????????????
+	#START/////////////////////////////////////////////////////////////CREATE LIMITER MULTIPLYDIVIDE NODE
+	limiterNode = maya.cmds.shadingNode('multiplyDivide',n=IKScaleLimiterNode + '1',au=True) 
+	
+	IKScaleLimiterNode = limiterNode
+
+	#CONNECT NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO ".colorIfFalseR" OF CONDITION NODE
+	socket = limiterNode + '.input2X'
+	connector = stretchDampenerNode + '.outColorR'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	socket = limiterNode + '.input1X'
+	connector = normaliseNode + '.outputX'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#END//////////////////////////////////////////////////////////////CREATE LIMITER MULTIPLYDIVIDE NODE
+	#??????????????????????????THIS IS REDUNDANT??????????????????????????????
+
+	#CREATE CONDITION NODE AND CONNECT NORMALISE ********************************************START********CREATE CONDITION NODE AND CONNECT NORMALISE 
+	#MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE*******************************START********MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+	conditionNode = maya.cmds.shadingNode('condition',n=IKConditionNode + '1',au=True) 
+	socket =  conditionNode + '.firstTerm'
+	connector =  normaliseNode + '.outputX'  
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(conditionNode + '.operation',4)
+	maya.cmds.setAttr(conditionNode + '.secondTerm',1)
+	maya.cmds.setAttr(conditionNode + '.colorIfTrueR',1)
+
+	#CONNECT NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO ".colorIfFalseR" OF CONDITION NODE
+	socket = conditionNode + '.colorIfFalseR'
+	connector = IKScaleLimiterNode + '.outputX'   
+
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#CREATE CONDITION NODE AND CONNECT NORMALISE ********************************************END********REATE CONDITION NODE AND CONNECT NORMALISE 
+	#MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE*******************************END********MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+
+	#CREATE AUTO STETCH ON AND OFF NODE********************************************START********CREATE AUTO STETCH ON AND OFF NODE
+	#connect waist CTRL auto switch to the first term
+	checkAttrExist(mainCTRL,autoSwitchAttr,'double',0,10,0,True,True)
+	connector = mainCTRL + '.' + autoSwitchAttr
+	socket = setRangeNode + '.valueY'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	maya.cmds.setAttr(setRangeNode + '.oldMaxY', 10)
+	maya.cmds.setAttr(setRangeNode + '.maxY', 1)
+
+	autoStretch = maya.cmds.shadingNode('blendColors',n=IKAutoStretchBlendNode + '1',au=True) 
+	socket = autoStretch + '.blender' #waist CTRL attribute auto stretch via set Range
+	connector = setRangeNode + '.outValueY' 
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#from auto stretch condition node;  $conditionNode 
+	socket = autoStretch + '.color1R'
+	connector = conditionNode + '.outColorR'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#from stretch  node;  $stretch 
+	socket = autoStretch + '.color2R'
+	connector = IKScaleLimiterNode + '.outputX'
+	maya.cmds.connectAttr(connector, socket, force=True)
+	#CREATE AUTO STETCH ON AND OFF NODE********************************************END********CREATE AUTO STETCH ON AND OFF NODE
+
+	#CREATE STRETCH ON AND OFF NODE**************************************************************START*******************CREATE STRETCH ON AND OFF NODE
+	stretch =  maya.cmds.shadingNode('blendColors',n=IKStretchBlendNode + '1',au=True) 
+	socket = stretch + '.color2R'
+	connector = normaliseNode + '.outputZ'
+	maya.cmds.connectAttr(connector, socket, force=True)
+	
+	socket = stretch + '.color1R'
+	connector =  autoStretch + '.outputR'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#connect $setRangeNode .outpUtX to $stretch blend input
+	socket =  stretch + '.blender'
+	connector =  setRangeNode + '.outValueX'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#CONNECT ATTRIBUTE 'stretchInfluence' to stretchRemapNode
+	checkAttrExist(mainCTRL ,'stretchInfluence','double',0,10,1.2,True,True)
+	source = mainCTRL + '.stretchInfluence'
+	destination = stretchRemapNode + '.inputMax'
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	#CREATE STRETCH ON AND OFF NODE**************************************************************END*******************CREATE STRETCH ON AND OFF NODE
+
+	IKConditionNode = conditionNode
+	IKNormaliseNode = normaliseNode
+	IKAutoStretchBlendNode = autoStretch
+	IKStretchBlendNode = stretch
+	stretchNormaliseNode = setRangeNode
+
+	#END///////////////////////////////////CREATE CONDITION, NORMALISE MULTIPLYDIVIDE NODE AND 
+	#END///////////////////////////////////CONNECT THE DISTANCE NODES DISTANCE ATTRIBUTE TO NORMALISE MULTIPLYDIVIDE NODES INPUT1X 
+	#END///////////////////////////////////CONNECT THE NORMALISE MULTIPLYDIVIDE NODES OUPUTX TO 1st TERM OF CONDITION NODE
+
+	#START/////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO IK JOINT TRANSLATEX
+	multiplierNodes = []
+	for i in range(0,howManyNodes,1):
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide',n=IKMultiplierNode + '1',au=True)
+		#multiplierNodes[i] = multiplierNode
+		multiplierNodes.append(multiplierNode)
+
+	#END///////////////////////////////////////////////////////////////MULTIPLIER NODES READY TO BE CONNECT RO IK JOINT TRANSLATEX
+
+	#START/////////////////////////////////////////////////////////////CONNECT THE CONDITION NODE TO MULTIPLIER NODES READY TO BE CONNECT TO IK JOINT TRANSLATEX
+	connectorAttribute1 = '.outputR'
+	socketAttribute1 = '.input' 
+	connector1 = IKStretchBlendNode + connectorAttribute1
+
+	connectorAttribute2 = '.output'
+
+	whichJoint = 1
+	brake = 0
+
+	#CONNECT CONDITION NODE TO MULYIPLIER NODES
+	for i in range(0,howManyNodes,1):
+		multiply = i + 1 #use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+		whichAxis = [' ', 'X', 'Y', 'Z']
+		for j in range(1,4,1):
+			if(brake == 0):
+				socket1 = multiplierNodes[i] + (socketAttribute1 + '2' + whichAxis[j])
+				maya.cmds.connectAttr(connector1, socket1, force=True)
+		
+				getAttr = maya.cmds.getAttr(ikJointArray[whichJoint] + '.t' + jointAimAxis)
+				setAttr = maya.cmds.setAttr(multiplierNodes[i] + (socketAttribute1 + '1' + whichAxis[j]), getAttr)
+		
+				connector2 = IKMultiplierNode + str(multiply) + (connectorAttribute2 + whichAxis[j])
+				socket2 = (ikJointArray[whichJoint] + '.t' + jointAimAxis)
+				maya.cmds.connectAttr(connector2, socket2, force=True)
+
+				whichJoint = whichJoint + 1
+	
+				print ('setUpIKstretch :: whichJoint = ' + str(whichJoint))
+				print ('setUpIKstretch :: howManyJoints = ' + str(howManyJoints))
+
+				#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+				if(whichJoint == howManyJoints):
+					brake = 1
+	
+		print ('setUpIKstretch :: i = ' + str(i) )
+
+def buildIKfootRig2(prefix,jointArray,howManyJoints,heelOffset,pitchAxis,rotateAxis,rollAxis,mainCTRL):
+	#Find the position for foot, ball, toe and store them
+	#Instructions:
+	#1.Create a IK foot Rig that has a ankle joint, ball joint, toe joint heading off in front and finally a temporary joint called "_toDelete_heel",
+	######that branches from the ankle down to where the heel of the geo meets the ground.
+	#2.Select the ankle joint and run script
+
+	#def createIKfootLocator(name,howManyJoints,jointArray):
+	#	name = 'tipToe_LOC'
+	#	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	#	whichJointLocation = howManyJoints - 2 #//////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+	#	whichJoint = jointArray[whichJointLocation]
+	#	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), skip="y", weight=1 )
+	#	maya.cmds.delete(constainLocator)
+
+	print('howManyJoints = ' + str(howManyJoints))
+
+	#tipToe locator and position it**************************************************************START*******tipToe locator & position it
+	name = 'tipToe_LOC'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = howManyJoints - 1 #//////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), skip="y", weight=1 )
+	maya.cmds.delete(constainLocator)
+	tipToe = createLocator[0]
+	#tipToe locator and position it**************************************************************END*********tipToe locator & position it
+
+	previousLocator = createLocator[0]
+
+	#heel locator and position it******************************************************************START*******heel locator & position it
+	name = 'heel_LOC'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	temp = maya.cmds.spaceLocator(n=prefix + 'temp_' + name, p=(0,0,0))[0]
+	maya.cmds.parent(createLocator,temp)
+	whichJointLocation = 0 #///////////////////////////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[0]#START JOINT OR ANKLE JOINT # OLD CODE : deleteHeelJoint #"_toDelete_heel"------------------->//OLD CODE//$jointArray[$whichJointLocation];
+	constainLocator = maya.cmds.pointConstraint(whichJoint, temp, offset=(0, 0, 0), skip="y", weight=1 )
+	#constainLocator = maya.cmds.parentConstraint(whichJoint, temp, st="y", weight=1 )
+	maya.cmds.delete(constainLocator)
+		
+	heel = createLocator[0]
+	#heel locator and position it******************************************************************END*******heel locator & position it
+
+	currentLocator = createLocator[0]
+
+	#BREAK OFFSET HEEL LOC#######################################################################################################START
+
+	#offset position of heel*************************************************************************START*****offset position of heel
+	getCurrentLocatorPos = maya.cmds.getAttr(currentLocator + '.t' + rollAxis) #////////////////////////////////NEEDS TO BE GLOBALISED
+	currentPos = getCurrentLocatorPos
+	offset = heelOffset #//////////////////////////////////////////////////////////////////////////////////////NEEDS TO BE GLOBALISED
+	offsetCurrentLocator = currentPos - offset
+	setCurrentLocatorPos = maya.cmds.setAttr(currentLocator + '.t' + rollAxis, offsetCurrentLocator) #//////////NEEDS TO BE GLOBALISED
+	maya.cmds.parent(createLocator,w=True,a=True)
+	maya.cmds.delete(temp)
+	#offset position of heel**************************************************************************END******offset position of heel
+
+	#BREAK OFFSET HEEL LOC#######################################################################################################END
+
+	maya.cmds.parent(currentLocator, previousLocator, a=True)
+	previousLocator = createLocator[0]
+
+	#ball locator 1 & position it**********************************************************************START*****ball locator 1 & position it
+	name = 'roll_LOC1'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = howManyJoints - 2 #////////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), weight=1 )
+	maya.cmds.delete(constainLocator)
+	roll = createLocator[0]
+	#ball locator 1 & position it**********************************************************************END*****ball locator 1 & position it
+
+	currentLocator = createLocator[0]
+	
+	maya.cmds.parent(currentLocator, previousLocator, a=True)
+	previousLocator = createLocator[0]
+
+	#ball locator 2 & position it**********************************************************************START*****ball locator 2 & position it
+	name = 'ball_LOC1'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = howManyJoints - 2 #//////////////////////////////////////select ball///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), weight=1 )
+	maya.cmds.delete(constainLocator)
+	ball = createLocator[0]
+	#ball locator 2 & position it**********************************************************************END*****ball locator 2 & position it
+
+	currentLocator = createLocator[0]
+	branchPoint = currentLocator #///////////////////////////////////////////slect branch point/////////////////////NEEDS TO BE UPDATED
+	
+	maya.cmds.parent(currentLocator, previousLocator, a=True)
+	previousLocator = createLocator[0]
+
+	#ankle locator & position it**********************************************************************START*****ankle locator & position it
+	name = 'ankle_LOC1'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = 0 #////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), weight=1 )
+	maya.cmds.delete(constainLocator)
+	#ankle locator & position it**********************************************************************END*****ankle locator & position it
+
+	currentLocator = createLocator[0]
+	maya.cmds.parent(currentLocator, previousLocator, a=True)
+	previousLocator = createLocator[0]
+	
+	#BREAK AND GO BACK TO BALL LOC 1#####################################################################################################START
+
+	#toe locator 1 & position it**********************************************************************START*****toe locator & position it
+	name = 'toe_LOC1'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = howManyJoints - 2 #////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), weight=1 )
+	maya.cmds.delete(constainLocator)
+	toe = createLocator[0]
+	#toe locator 1 & position it**********************************************************************END*****toe locator & position it
+
+	currentLocator = createLocator[0]
+	maya.cmds.parent(currentLocator, branchPoint, a=True) #////////////////////////////////////////select ball 2///////NEEDS TO BE UPDATED
+	previousLocator = createLocator[0]
+
+	#toe locator 2 & position it**********************************************************************START*****toe locator & position it
+	name = 'toe_LOC2'
+	createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+	whichJointLocation = howManyJoints - 1 #//////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+	whichJoint = jointArray[whichJointLocation]
+	constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), weight=1 )
+	maya.cmds.delete(constainLocator)
+	#toe locator 2 & position it**********************************************************************END*****toe locator & position it
+
+	currentLocator = createLocator[0]
+	maya.cmds.parent(currentLocator, previousLocator, a=True) #//////////////////////////////////////////select toe 1///////NEEDS TO BE UPDATED
+	previousLocator = createLocator[0]
+
+	#CONNECT AND CREATE ATTRIBUTES TO MAIN CONTROL
+	checkAttrExist(mainCTRL,'heelUp','double',-90,90,0,True,True)
+	source = mainCTRL + '.heelUp'
+	destination = heel + '.r' + pitchAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	checkAttrExist(mainCTRL,'heelSide','double',-90,90,0,True,True)
+	source = mainCTRL + '.heelSide'
+	destination = heel + '.r' + rotateAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	checkAttrExist(mainCTRL,'ballUp','double',-90,90,0,True,True)
+	source = mainCTRL + '.ballUp'
+	destination = ball + '.r' + pitchAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	checkAttrExist(mainCTRL,'ballSide','double',-90,90,0,True,True)
+	source = mainCTRL + '.ballSide'
+	destination = ball + '.r' + rotateAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	checkAttrExist(mainCTRL,'toeUp','double',-90,90,0,True,True)
+	source = mainCTRL + '.toeUp'
+	destination = toe + '.r' + pitchAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	checkAttrExist(mainCTRL,'tipToeUp','double',-180,180,0,True,True)
+	source = mainCTRL + '.tipToeUp'
+	destination = tipToe + '.r' + pitchAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+	checkAttrExist(mainCTRL,'tipToeSide','double',-90,90,0,True,True)
+	source = mainCTRL + '.tipToeSide'
+	destination = tipToe + '.r' + rotateAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	checkAttrExist(mainCTRL,'footRoll','double',-90,90,0,True,True)
+	source = mainCTRL + '.footRoll'
+	destination = roll + '.r' + rollAxis
+	maya.cmds.connectAttr(source, destination, force=True)
+
+	return (prefix + 'tipToe_LOC',prefix + 'ankle_LOC1')
+
+sidePrefix = 'L_'
+jointType = 'IK_'
+limbTypeName = 'leg_'
+prefix = sidePrefix + jointType
+
+jointAimAxis = 'x'#['x','y','z']
+jointUpAxis = 'y'
+pitchAxis = jointAimAxis # NORMALLY 'X'
+rotateAxis = jointUpAxis # NORMALLY 'Y'
+rollAxis = 'z' # NORMALLY 'Z'
+
+###############################################################################################
+#  MAKE SURE THAT YOUR CHARACTER FRONT IS POINT IN THE POSITIVE AXIS
+#  GET THE DISTANCE FROM THE ANKLE JOINT TO HEEL
+#     SELECT:	
+#	1. SELECT THE ANKLE JOINT
+#	2. SELECT THE FOOT JOINT
+#	3. SELECT THE TOE JOINT
+#	4. START CONTROL (ie HIP OR SHOULDER, SO THAT THE DIMENSION NODE CAN MEASURE FROM)
+#	5. MAIN IKHANDLE 
+###############################################################################################
+
+distanceForHeel = 4
+sel = maya.cmds.ls(selection=True)
+mainCtrl = maya.cmds.ls(selection=True, tail=2)[0]
+mainIkhandle = maya.cmds.ls(selection=True, tail=1)[0]
+ikFootJoints = []
+for j in range(0,len(sel)-2,1):
+	ikFootJoints.append(sel[j])
+
+print('ikFootJoints = ' + str(ikFootJoints))
+
+if(pitchAxis == 'z'):
+	if(rotateAxis == 'y'):
+		rollAxis = 'x'
+	else:
+		rollAxis = 'y'
+elif(pitchAxis == 'y'): 
+	if(rotateAxis == 'x'):
+		rollAxis = 'z'
+	else:
+		rollAxis = 'x'
+
+#CREATE IKHANDLE FOR ANKLE TO FOOT
+footIK = createIKhandles(prefix,'foot_','ikSCsolver',ikFootJoints[0],ikFootJoints[1],False,None,None)
+print('masterCreateIK :: footIK = ' + str(footIK))
+#CREATE IKHANDLE FOR FOOT TO TOE
+toeIK = createIKhandles(prefix,'toe_','ikSCsolver',ikFootJoints[1],ikFootJoints[2],False,None,None)
+print('masterCreateIK :: toeIK = ' + str(toeIK))
+
+tipToeLoc = buildIKfootRig2(prefix,ikFootJoints,len(ikFootJoints),distanceForHeel,pitchAxis,rotateAxis,rollAxis,mainCtrl)[0]
+endCtrl = tipToeLoc[1]
+maya.cmds.parent(toeIK[0], prefix + 'toe_LOC2')
+maya.cmds.parent(footIK[0], prefix + 'ball_LOC1')
+maya.cmds.parent(mainIkhandle, prefix + 'ankle_LOC1')
+maya.cmds.parent(tipToeLoc,mainCtrl,a=True)

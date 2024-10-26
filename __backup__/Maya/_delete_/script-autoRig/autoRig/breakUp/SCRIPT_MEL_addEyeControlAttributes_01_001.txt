@@ -1,0 +1,53 @@
+addAttr -ln "R_Eye_Up_MAIN"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_MAIN;
+addAttr -ln "R_Eye_Up_1"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_1;
+addAttr -ln "R_Eye_Up_2"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_2;
+addAttr -ln "R_Eye_Up_3"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_3;
+addAttr -ln "R_Eye_Up_4"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_4;
+addAttr -ln "R_Eye_Up_5"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Up_5;
+
+addAttr -ln "R_Eye_Low_MAIN"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_MAIN;
+addAttr -ln "R_Eye_Low_1"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_1;
+addAttr -ln "R_Eye_Low_2"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_2;
+addAttr -ln "R_Eye_Low_3"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_3;
+addAttr -ln "R_Eye_Low_4"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_4;
+addAttr -ln "R_Eye_Low_5"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|R_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|R_eye_CTRL.R_Eye_Low_5;
+
+
+
+addAttr -ln "L_Eye_Up_MAIN"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_MAIN;
+addAttr -ln "L_Eye_Up_1"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_1;
+addAttr -ln "L_Eye_Up_2"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_2;
+addAttr -ln "L_Eye_Up_3"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_3;
+addAttr -ln "L_Eye_Up_4"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_4;
+addAttr -ln "L_Eye_Up_5"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Up_5;
+
+addAttr -ln "L_Eye_Low_MAIN"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_MAIN;
+addAttr -ln "L_Eye_Low_1"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_1;
+addAttr -ln "L_Eye_Low_2"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_2;
+addAttr -ln "L_Eye_Low_3"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_3;
+addAttr -ln "L_Eye_Low_4"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_4;
+addAttr -ln "L_Eye_Low_5"  -at double  -min -180 -max 180 -dv 0 |M_eye_CTRL|L_eye_CTRL;
+setAttr -e-keyable true |M_eye_CTRL|L_eye_CTRL.L_Eye_Low_5;

@@ -1,0 +1,566 @@
+
+//custome build curve for spine that ensures that the middle control poin on the spine curve is located at the bottom the rib cage
+//as this is going to be a crucial pivot point
+select -add pelvis1|pelvis2|spine1|spine2|spine3|spine4|spine5|spine6|spine7|spine8|neck1.rotatePivot ;
+ikHandle -sol ikSplineSolver -pcv false -ns 2;  OR  ikHandle -sol ikSplineSolver -ccv false -pcv false -ns 2;
+select -r curve1 ;
+
+
+//cluster spine curve
+
+
+//setup stretchy IK for spine
+select -r spine_splineIK_curve ;
+arclen -ch 1;
+// Result: curveInfo1 // 
+rename to spine_curveInfo1
+
+string $multiplierNode = shadingNode -asUtility multiplyDivide;//set attribute to DIVIDE
+rename "multiplyDivide1" "spine_normalize_multiplyDivide1";
+
+connectAttr -force spine_curveInfo1.arcLength spine_multiplier_multiplyDivide1.input2X;
+
+setAttr "spine_multiplier_multiplyDivide1.input1X" spine_curveInfo1.arcLength;
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//create stretchy SPINE IK connections================================================================================================================================
+//INSTRUCTIONS;
+//1.Select all the joints that make up the spine Ik group except the very first joint as this is not be stretched and then select the spline IK curve LAST
+
+
+
+//START OF SCRIPT
+string $sel[] = `ls -sl`;
+float $howManyJoints = (size($sel) -1);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+//print $howManyNodes;
+int $i;
+int $j;
+int $whichJoint; 
+int $break = 0;
+//int $countJoints = 1;
+
+
+string $spineNormaliseNode = "spine_normalize_multiplyDivide1";
+string $spineMultiplyNode = "spine_multiplier_multiplyDivide";
+
+
+//START////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+//CREATE CURVE INFO AND MULTIPLYDIVIDE NODES
+string $curveInfoNode = `arclen -ch on $last[0]`;
+string $multiplierNode = `shadingNode -n "spine_normalize_multiplyDivide1" -asUtility multiplyDivide`;
+
+$spineNormaliseNode = $multiplierNode;//ENSURE THAT THERE CONTINUITY THROUGH OUT THE SCRIPT
+
+
+//CONNECT ARCLENGTH TO INPUT1X 
+string $socketAttribute = ".input1X" ;
+string $connectorAttribute = ".arcLength";
+
+string $connector = $curveInfoNode + $connectorAttribute;
+string $socket = $multiplierNode + $socketAttribute;
+
+connectAttr -force $connector $socket;
+
+
+//SET INPUT2X TO ARCLENGTH VALUE AND SET MULTIPLEDIVED NODES OPERATION TO DIVIDE
+$socketAttribute = ".input2X";
+
+setAttr ($multiplierNode + ".operation") 2;
+float $arcLength = `getAttr $connector`;
+
+setAttr ($multiplierNode + $socketAttribute) $arcLength;
+
+
+rename $curveInfoNode "spine_curveInfo1";
+
+
+//END/////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+
+
+//START///////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+//CREATE MULTIPLYDIVIDE NODES 
+for ($i = 0; $i < $howManyNodes; $i++){
+string $multiplierNode = `shadingNode -n ($spineMultiplyNode + "1") -asUtility multiplyDivide`;
+} 
+
+
+string $connectorAttribute1 = ".outputX";//change this variable
+string $socketAttribute1 = ".input" ;//change this variable
+string $connector1 = $spineNormaliseNode + $connectorAttribute1;
+
+string $connectorAttribute2 = ".output";
+string $socketAttribute2;
+
+$whichJoint = 0;
+
+
+
+//CONNECT THE NORMALISE NODE TO THE MULTIPLYDIVIDE NODES, COPY SPINE JOINT TRANSLATEX TO MULTIPLYDIVIDE NODES INPUT 1XYZ ATTRIBUTES AND 
+//CONNECT MULTIPLYDIVIDE NODES OUTPUT XYZ TO SPINE JOINT TRANSLATEX
+for($i = 0; $i < $howManyNodes; $i++){
+	int $multiply = $i + 1;
+	
+	for($j = 1; $j < 4; $j++){
+		if($break == 0){
+			string $whichAxis[4] = {" ", "X", "Y", "Z"};
+		
+		
+			string $socket1 = $spineMultiplyNode + $multiply + ($socketAttribute1 + "2" + $whichAxis[$j]);
+			connectAttr -force $connector1 $socket1;
+		
+			float $getAttr = getAttr ($sel[$whichJoint] + ".tx");
+			float $setAttr = `setAttr ($spineMultiplyNode + $multiply + ($socketAttribute1 + "1" + $whichAxis[$j])) $getAttr`;
+		
+			string $connector2 = $spineMultiplyNode + $multiply + ($connectorAttribute2 + $whichAxis[$j]);
+			string $socket2 = ($sel[$whichJoint] + ".tx");
+			connectAttr -force $connector2 $socket2;
+
+
+			$whichJoint = $whichJoint + 1;
+			 
+	
+			print ("$whichJoint = " + $whichJoint + "/n");
+			print ("$howManyJoints = " + $howManyJoints + "/n");
+
+			//LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+			if($whichJoint == $howManyJoints){
+				$break = 1;
+			}
+		}
+	
+	}
+
+	
+	//print ("$i = " + $i + "/n");
+
+}
+
+
+//END/////////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+//================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++;
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//create stretchy IK connections for Arm=========================================================================================================================
+
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil(($howManyJoints - 1) / 3);
+int $i;
+int $j;
+int $whichJoint; 
+
+
+
+
+
+
+//string $socket;
+
+//++++++++TEMPORARY DISABLE++++++++
+//for ($i = 0; $i < $howManyNodes; $i++){
+//string $multiplierNode = `shadingNode -asUtility multiplyDivide`;
+//rename $multiplierNode "IK_L_arm_multiplier_multiplyDivide1";
+//}// ++++++++TEMPORARY DISABLE++++++++
+
+
+
+
+string $connectorAttribute1 = ".outColorR";//change this variable
+string $socketAttribute1 = ".input" ;//change this variable
+string $connector1 = "IK_L_arm_condition1" + $connectorAttribute1;
+
+string $connectorAttribute2 = ".output";
+
+
+
+
+$whichJoint = 1;
+
+
+
+//connect normalize node to multiply nodes
+for($i = 0; $i < $howManyNodes; $i++){
+	int $multiply = $i + 1;//use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+	for($j = 1; $j < 4; $j++){
+		
+		string $whichAxis[4] = {" ", "X", "Y", "Z"};
+		
+		
+		string $socket1 = "IK_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "2" + $whichAxis[$j]);
+		connectAttr -force $connector1 $socket1;
+		
+		float $getAttr = getAttr ($sel[$whichJoint] + ".tx");
+		float $setAttr = `setAttr ("IK_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "1" + $whichAxis[$j])) $getAttr`;
+		
+		string $connector2 = "IK_L_arm_multiplier_multiplyDivide" + $multiply + ($connectorAttribute2 + $whichAxis[$j]);
+		string $socket2 = ($sel[$whichJoint] + ".tx");
+		connectAttr -force $connector2 $socket2;
+
+
+		$whichJoint = $whichJoint + 1;
+	
+		print ("$whichJoint = " + $whichJoint + "/n");
+	
+	}
+
+	
+	print ("$i = " + $i + "/n");
+
+}
+================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CREATE ARM Stretchy DEFORM joints for spline IK setup that is currently not in use================================================================================================================================
+================================================================================================================================
+================================================================================================================================
+
+//last selected node will be your connector
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil(($howManyJoints - 1) / 3);
+int $i;
+int $j;
+int $whichJoint; 
+
+
+//
+for ($i = 0; $i < $howManyNodes; $i++){
+string $multiplierNode = `shadingNode -asUtility multiplyDivide`;
+rename $multiplierNode "SPL_L_arm_multiplier_multiplyDivide1";
+}
+
+string $connectorAttribute1 = ".output";//change this variable
+string $socketAttribute1 = ".input" ;//change this variable
+string $connector1 = "SPL_L_arm_normalize_multiplyDivide1" + $connectorAttribute1 + "X";
+
+
+$whichJoint = 1;
+
+
+//connect normalize node to multiply nodes
+for($i = 0; $i < $howManyNodes; $i++){
+	int $multiply = $i + 1;//use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+	for($j = 1; $j < 4; $j++){
+		
+		string $whichAxis[4] = {" ", "X", "Y", "Z"};
+		
+		string $socket1 = "SPL_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "2" + $whichAxis[$j]);
+		connectAttr -force $connector1 $socket1;
+		
+				
+		float $getAttr = getAttr ($sel[$whichJoint] + ".tx");
+		float $setAttr = `setAttr ("SPL_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "1" + $whichAxis[$j])) $getAttr`;
+		
+		string $connector2 = "SPL_L_arm_multiplier_multiplyDivide" + $multiply + ($connectorAttribute1 + $whichAxis[$j]);
+		string $socket2 = ($sel[$whichJoint] + ".tx");
+		connectAttr -force $connector2 $socket2;
+
+
+		$whichJoint = $whichJoint + 1;
+	
+		print ("$whichJoint = " + $whichJoint + "/n");
+	
+	}
+
+	
+	print ("$i = " + $i + "/n");
+
+}
+
+================================================================================================================================
+================================================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//CONNECT finger joints       ======================================================
+============================================================================================================
+============================================================================================================
+//Index Finger==============================================================================================
+string $sel[] = `ls -sl`;//select contol last and select joint on first
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+============================================================================================================
+============================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+//NOT REQUIRED-----------> string $deform[] = {"DEFORM_L_shoulder", "DEFORM_L_upperArm1", "DEFORM_L_upperArm2", "DEFORM_L_elbow", "DEFORM_L_foreArm1", "DEFORM_L_foreArm2", "DEFORM_L_wrist"};
+string $IK[] = {"IK_L_shoulder", "IK_L_upperArm1", "IK_L_upperArm2", "IK_L_elbow", "IK_L_foreArm1", "IK_L_foreArm2", "IK_L_wrist"};
+string $FK[] = {"FK_L_shoulder", "FK_L_upperArm1", "FK_L_upperArm2", "FK_L_elbow", "FK_L_foreArm1", "FK_L_foreArm2", "FK_L_wrist"};
+float $howManyJoints = size($deform);
+string $groupNode = "L_arm_clusterGRP";
+int $offset;
+int $i;
+
+for($i = 0; $i < $howManyJoints; $i++){
+	$offset = $i + 1;
+	string $parentIK[] = `parentConstraint -mo $IK[$i] ($groupNode + $offset)` ;
+	string $parentFK[] = `parentConstraint -mo $FK[$i] ($groupNode + $offset)` ;
+}
+
+
+
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//CONNECT WRIST CONTROLS TO THE "L_armTweak_AV"       ======================================================
+============================================================================================================
+============================================================================================================
+print("__________________________CONNECT WRIST CONTROLS TO THE "L_armTweak_AV"__________________________");
+//last selected node will be your connector
+//select the DEFORM joints to be connected. SELECT THE WRIST FIRST THEN THE SHOULDER
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+
+int $i;
+int $j;
+int $whichJoint; 
+int $count = 1;
+int $break = 0;
+
+
+//ensure that the controllers are created
+string $IKwristCtrl = "IK_L_CTRL_wrist";
+string $FKwristCtrl = "FK_L_CTRL_wrist";
+
+
+string $IKrotateMultiply = "IK_L_arm_rotator_multiplyDivide";
+string $FKrotateMultiply = "FK_L_arm_rotator_multiplyDivide";
+string $IKFKrotateBlend =  "IKFK_L_arm_blend";
+string $armTweak_AV = "L_armTweak_AV";
+
+
+
+//create multiply and blend nodes 
+
+for ($i = 0; $i < $howManyNodes; $i++){
+
+	string $multiplierNode = `shadingNode -n ($IKrotateMultiply + "1") -asUtility multiplyDivide`;
+	string $multiplierNode = `shadingNode -n ($FKrotateMultiply + "1") -asUtility multiplyDivide`;
+	string $multiplierNode = `shadingNode -n ($IKFKrotateBlend + "1") -asUtility blendColors`;
+
+
+	//Connect Multiple nodes to blend
+	int $offset = $i + 1;
+	
+	string $whichAxis[3] = {"X", "Y", "Z"};
+	string $whichColour[3] = {"R", "B", "G"};
+	
+	for($j = 0; $j < $howManyNodes; $j++){
+		
+		if($break == 0){
+			string $IKconnector = $IKrotateMultiply + $offset + ".output" + $whichAxis[$j];
+			string $FKconnector = $FKrotateMultiply + $offset + ".output" + $whichAxis[$j];
+			string $IKsocket = $IKFKrotateBlend + $offset + ".color1" + $whichColour[$j];//IK
+			string $FKsocket = $IKFKrotateBlend + $offset + ".color2" + $whichColour[$j];//FK
+		
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+		
+
+			//connect IK wrist control to Multiply nodes
+			string $IKsocket = $IKrotateMultiply + $offset + ".input1" + $whichAxis[$j];
+			string $FKsocket = $FKrotateMultiply + $offset + ".input1" + $whichAxis[$j];
+
+			string $IKconnector = $IKwristCtrl + ".rotateX";
+			string $FKconnector = $FKwristCtrl + ".rotateX";
+
+			connectAttr -force $IKconnector $IKsocket;
+			connectAttr -force $FKconnector $FKsocket;
+
+			//increment up the suffix to conect to "L_armTweak_AV"
+			string $connector = $IKFKrotateBlend + $offset + ".output" + $whichColour[$j];
+			string $socket = $armTweak_AV + $count + ".rotateX";
+		
+			connectAttr -force $connector $socket;
+
+			$count = $count + 1;
+
+			if($count > $howManyJoints){
+				$break = 1;
+				print $count;
+			}
+		}
+	}
+}
+============================================================================================================
+============================================================================================================
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+============================================================================================================
+============================================================================================================
+//SET UP THE IK FK SWITCH
+print("__________________________SET UP THE IK FK SWITCH__________________________");
+//select parent constraints that are associated with the Arm deform joints and the hand controls 
+string $sel[] = `ls -sl`;
+float $size = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+
+
+
+string $handCTRL = "L_hand";
+
+
+
+string $setRangeNode = `shadingNode -n "IKFK_L_arm_setRange1" -asUtility setRange`;
+
+
+
+string $socketAttribute1 = ".valueX";
+string $connectorAttribute1 = ".IkFk";//change this variable
+
+string $socketAttribute2 = ".valueY";//change this variable
+
+
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $socket2 = $setRangeNode + $socketAttribute2;
+string $connector1 = $handCTRL + $connectorAttribute1;
+connectAttr -force  $connector1  $socket1;
+connectAttr -force  $connector1  $socket2;
+
+string $connectorAttribute3 = ".outValueX";//change this variable
+string $connectorAttribute4 = ".outValueY";//change this variable
+
+string $visibilityAttribute = ".visibility";
+
+
+string $IK[] = {".IK_L_shoulderW0", ".IK_L_upperArm1W0", ".IK_L_upperArm2W0", ".IK_L_elbowW0", ".IK_L_foreArm1W0", ".IK_L_foreArm2W0", ".IK_L_wristW0", ".IK_L_CTRL_wristW0"};
+string $FK[] = {".FK_L_shoulderW1", ".FK_L_upperArm1W1", ".FK_L_upperArm2W1", ".FK_L_elbowW1", ".FK_L_foreArm1W1", ".FK_L_foreArm2W1", ".FK_L_wristW1", ".FK_L_CTRL_wristW1"};
+
+
+string $IKCTRL[] = {"IK_L_CTRL_shoulder", "IK_L_CTRL_wrist", "IK_L_arm_PV"};
+string $FKCTRL[] = {"FK_L_CTRL_shoulder", "FK_L_CTRL_elbow", "FK_L_CTRL_wrist"};
+
+float $IKSize = size($IKCTRL);
+float $FKSize = size($FKCTRL);
+
+for($i = 0; $i < ($size - 1); $i++){
+
+			string $socket3 = $sel[$i] + $IK[$i];
+			string $socket4 = $sel[$i] + $FK[$i];
+			
+			string $connector3 = $setRangeNode + $connectorAttribute3;
+			string $connector4 = $setRangeNode + $connectorAttribute4;
+
+			
+			
+			
+			connectAttr -force  $connector3  $socket3;//IK
+			connectAttr -force  $connector4  $socket4;//FK
+			
+}
+
+
+
+for($i = 0; $i < $IKSize; $i++){
+
+		string $connector3 = $setRangeNode + $connectorAttribute3;
+		string $socket5 = $IKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector3  $socket5;
+
+
+}
+
+
+for($i = 0; $i < $FKSize; $i++){
+		string $connector4 = $setRangeNode + $connectorAttribute4;
+		string $socket6 = $FKCTRL[$i] + $visibilityAttribute;
+		connectAttr -force  $connector4  $socket6;
+
+
+}
+
+
+============================================================================================================
+============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+string $connectorAttribute1 = ".outColorR";//change this variable
+string $socketAttribute1 = ".input" ;//change this variable
+string $connector1 = "IK_L_arm_condition1" + $connectorAttribute1;
+
+string $connectorAttribute2 = ".output";
+
+
+
+
+$whichJoint = 1;
+
+
+
+//connect normalize node to multiply nodes
+for($i = 0; $i < $howManyNodes; $i++){
+	int $multiply = $i + 1;//use to select the right joint in $sel[] and "spine_multiplier_multiplyDivide" node
+	
+	for($j = 1; $j < 4; $j++){
+		
+		string $whichAxis[4] = {" ", "X", "Y", "Z"};
+		
+		
+		string $socket1 = "IK_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "2" + $whichAxis[$j]);
+		connectAttr -force $connector1 $socket1;
+		
+		float $getAttr = getAttr ($sel[$whichJoint] + ".tx");
+		float $setAttr = `setAttr ("IK_L_arm_multiplier_multiplyDivide" + $multiply + ($socketAttribute1 + "1" + $whichAxis[$j])) $getAttr`;
+		
+		string $connector2 = "IK_L_arm_multiplier_multiplyDivide" + $multiply + ($connectorAttribute2 + $whichAxis[$j]);
+		string $socket2 = ($sel[$whichJoint] + ".tx");
+		connectAttr -force $connector2 $socket2;
+
+
+		$whichJoint = $whichJoint + 1;
+	
+		print ("$whichJoint = " + $whichJoint + "/n");
+	
+	}
+
+	
+	print ("$i = " + $i + "/n");
+
+}
+================================================================================================================================

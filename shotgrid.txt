@@ -1,0 +1,711 @@
+from __future__ import absolute_import
+
+# Copyright (c) 2012 The Foundry Visionmongers Ltd. All Rights Reserved.
+
+from Katana import QtCore, QtGui, QT4FormWidgets, UI4, AssetAPI, logging, QtWidgets
+from UI4.Util import AssetWidgetDelegatePlugins
+import os
+import tempfile
+
+import sgtk
+from sgtk.errors import TankError
+import sgfb
+from sgtk_resolver import (
+    url_to_path,
+    fields_to_url,
+    path_to_url,
+    path_to_fields,
+    url_to_fields,
+)
+from sgtk_resolver.constants import SGTK_PROTOCOL
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+# Set up a Katana logger
+log = logging.getLogger("ShotgunAssetWidgetDelegate")
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+
+def _logDebug(message):
+    """
+    Logs additional information for debug purposes.
+
+    This can be turned on by setting the MOCK_DEBUG environment variable.
+    """
+    if os.environ.get("MOCK_DEBUG", False):
+        log.info(message)
+
+
+def _getBaseDir():
+    """
+    Returns the default root directory of the MOCK asset database from the
+    "MOCK_ASSET_DIR" environment variable.
+    """
+    return os.environ.get("MOCK_ASSET_DIR", tempfile.gettempdir())
+
+
+def _listDirs(dir):
+    """Returns an ordered list of directories inside a given folder"""
+    dirs = []
+    if not os.path.exists(dir):
+        log.warning('Database directory not found: "%s"' % dir)
+        return dirs
+
+    children = os.listdir(dir)
+    for child in children:
+        path = os.path.join(dir, child)
+        if os.path.isdir(path):
+            dirs.append(child)
+
+    return sorted(dirs)
+
+
+def _getShows():
+    """Return a list of shows in the mock asset database"""
+    return _listDirs(_getBaseDir())
+
+
+def _getShots(show=None):
+    """Return a list of shots in the mock asset database"""
+    if not show:
+        return []
+    showPath = os.path.join(_getBaseDir(), show)
+    return _listDirs(showPath)
+
+
+def _getAssets(show=None, shot=None):
+    """Return a list of asset names in the mock asset database"""
+    if not show or not shot:
+        return []
+    shotPath = os.path.join(_getBaseDir(), show, shot)
+    return _listDirs(shotPath)
+
+
+def _getVersions(show=None, shot=None, asset=None):
+    """Return a list of versions in the mock asset database"""
+    if not show or not shot or not asset:
+        return []
+    assetPath = os.path.join(_getBaseDir(), show, shot, asset)
+    return _listDirs(assetPath)
+
+
+def _getSandboxFiles():
+    """
+    Returns the list of filenames currently stored in the sandbox folder
+    """
+    sandboxFolder = os.getenv("MOCK_SANDBOX_DIR", tempfile.gettempdir())
+    sandboxPrefix = "mock_sandbox_"
+    filenames = os.listdir(sandboxFolder)
+    fileList = []
+    for filename in filenames:
+        if filename.startswith(sandboxPrefix):
+            fileList.append(filename[len(sandboxPrefix) :])
+    return fileList
+
+
+def getTK():
+    context = None
+    # Attempt to find context in environment
+    if "TANK_CONTEXT" in os.environ:
+        serialised_context = os.environ.get("TANK_CONTEXT")
+        if serialised_context:
+            context = sgtk.context.deserialize(serialised_context)
+    if context:
+        return context.sgtk
+
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+
+# Config
+SCENEGRAPH_XML_TEMPLATE_NAME = "shot_scenegraphxml_publish"
+SHOT_ROLE_ALEMBIC_TEMPLATE_NAME = "asset_role_alembic_cache"
+ASSET_ALEMBIC_TEMPLATE_NAME = "asset_cache"
+
+
+class ShotgunAssetControlWidget(AssetWidgetDelegatePlugins.BaseAssetControlWidget):
+    """
+    The asset control widget takes control of the display of any string
+    parameters that have an asset id 'hint'.
+    """
+
+    def buildWidgets(self, hints):
+        """Creates most of the UI widgets"""
+        self.tk = getTK()
+        label = QtWidgets.QLabel("Shotgun |", self)
+        label.setProperty("smallFont", True)
+        label.setProperty("boldFont", True)
+        p = label.palette()
+        p.setColor(QtGui.QPalette.WindowText, QtGui.QColor(0, 200, 225))
+        p.setColor(QtGui.QPalette.Text, QtGui.QColor(0, 200, 225))
+        label.setPalette(p)
+        self.layout().addWidget(label)
+
+        self.__protocolLabel = QtWidgets.QLabel(":")
+        self.__protocolLabel.setPalette(p)
+        self.__protocolLabel.setProperty("smallFont", True)
+        self.__protocolLabel.setProperty("boldFont", True)
+        self.layout().addWidget(self.__protocolLabel)
+
+        self.__pathEdit = QT4FormWidgets.InputWidgets.InputLineEdit(self)
+        self.__pathEdit.setReadOnly(True)
+        self.__resolvedFile = ""
+        self.layout().addWidget(self.__pathEdit)
+
+        self.versionLabel = QtWidgets.QLabel("version policy:")
+        self.versionLabel.setProperty("smallFont", True)
+        self.versionLabel.setPalette(p)
+        self.versionCombo = QtWidgets.QComboBox()
+        policies = ["locked", "latest"]
+        self.versionCombo.addItems(policies)
+        # Could have icon too instead of a combo?
+        self.layout().addWidget(self.versionLabel)
+        self.layout().addWidget(self.versionCombo)
+        self.versionLabel.hide()
+        self.versionCombo.hide()
+
+        self.__pathEdit.lostFocus.connect(self.__lostFocus)
+
+        # Add a context menu to the protocol label
+        self.__protocolLabel.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.__protocolLabel.customContextMenuRequested.connect(self.onContextMenu)
+
+        self.__popupMenu = QtWidgets.QMenu(self)
+        # self.__popupMenu.addAction("Swap protocol", self.onSwapProtocol)
+
+    def onContextMenu(self, point):
+        """
+        Displays a simple context menu to swap the current protocol used to
+        resolve asset IDs.
+        """
+        self.__popupMenu.exec_(self.__protocolLabel.mapToGlobal(point))
+
+    # def onSwapProtocol(self):
+    # """
+    # Swaps the current protocol used to resolve asset IDs.
+    # """
+    # if str(self.__protocolLabel.text()) == "mock://":
+    # self.__protocolLabel.setText("sandbox://")
+    # else:
+    # self.__protocolLabel.setText("mock://")
+    # self.emitValueChanged()
+
+    # protocol = "asset"
+    # if self.__protocolLabel.text() == "sandbox://":
+    # protocol = "sandbox"
+
+    def __lostFocus(self):
+        """Triggered when the browser loses focus"""
+        self.emitValueChanged()
+
+    def setValue(self, value):
+        """ """
+        assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+        if not assetPlugin.isAssetId(value):
+            return
+
+        assetFields = assetPlugin.getAssetFields(value, True)
+
+        if assetFields.get("protocol", "") == "sgtk":
+            self.__resolvedFile = url_to_path(self.tk, value)
+            self.__protocolLabel.setText("sgtk:")
+            displayText = os.path.basename(self.__resolvedFile)
+            self.versionLabel.show()
+            self.versionCombo.show()
+
+        elif assetFields.get("protocol", "") == "file":
+            self.__resolvedFile = assetFields["path"]
+            self.__protocolLabel.setText("file:")
+            displayText = str(assetFields["name"])
+            self.versionLabel.hide()
+            self.versionCombo.hide()
+
+        self.__pathEdit.setText(displayText)
+
+    def getValue(self):
+        """Get the asset ID from this browser window"""
+        assetFields = path_to_fields(self.tk, self.__resolvedFile)
+        assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+        assetId = assetPlugin.buildAssetId(assetFields)
+        return assetId
+
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+
+class PyMockAssetRenderWidget(AssetWidgetDelegatePlugins.BaseAssetRenderWidget):
+    def buildWidgets(self, hints):
+        """
+        This will construct the UI for the render widget for the asset
+        management system.
+        """
+        label = QtWidgets.QLabel(" (PyMock)", self)
+        label.setProperty("smallFont", True)
+        label.setProperty("boldFont", True)
+        p = label.palette()
+        p.setColor(QtGui.QPalette.WindowText, QtGui.QColor(255, 200, 0))
+        p.setColor(QtGui.QPalette.Text, QtGui.QColor(255, 200, 0))
+        label.setPalette(p)
+        self.layout().addWidget(label)
+
+        assetIdWidget = QtWidgets.QWidget(self)
+        assetIdHBox = QtWidgets.QHBoxLayout(assetIdWidget)
+        assetIdLabel = QtWidgets.QLabel("Output Asset:", assetIdWidget)
+        assetIdLabel.setEnabled(False)
+        assetIdHBox.addWidget(assetIdLabel, 0)
+        self.__assetIdLabel = QtWidgets.QLineEdit("", assetIdWidget)
+        self.__assetIdLabel.setReadOnly(True)
+        assetIdHBox.addWidget(self.__assetIdLabel, 0)
+        self.layout().addWidget(assetIdWidget)
+
+        self.updateWidgets()
+
+    def updateWidgets(self):
+        """Update the UI to reflect internals"""
+        assetId = self.getOutputInfo()["outputLocation"]
+        if not assetId:
+            assetId = "No output defined..."
+
+        self.__assetIdLabel.setText(assetId)
+
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+# class ShotgunAssetListsWidget(QtWidgets.QFrame):
+# """
+# Asset browser using lists. This is used for asset selection when loading
+# assets.
+# """
+
+# def __init__(self):
+# QtWidgets.QFrame.__init__(self)
+
+# QtWidgets.QHBoxLayout(self)
+
+# self.__tabWidget = QtWidgets.QTabWidget(self)
+# self.layout().addWidget(self.__tabWidget)
+
+# assetTab = QtWidgets.QFrame(self)
+# QtWidgets.QHBoxLayout(assetTab)
+# self.__tabWidget.addTab(assetTab, "Asset")
+
+# self.__showList = self.__buildListWidget("Show", assetTab.layout())
+# self.__shotList = self.__buildListWidget("Shot", assetTab.layout())
+# self.__nameList = self.__buildListWidget("Asset", assetTab.layout())
+# self.__versionList = self.__buildListWidget("Version", assetTab.layout())
+
+# self.__showList.itemSelectionChanged.connect(self.__updateShow)
+# self.__shotList.itemSelectionChanged.connect(self.__updateShot)
+# self.__nameList.itemSelectionChanged.connect(self.__updateAsset)
+# self.__versionList.itemSelectionChanged.connect(self.__updateVersion)
+
+# sandboxTab = QtWidgets.QFrame(self)
+# QtWidgets.QHBoxLayout(sandboxTab)
+# self.__tabWidget.addTab(sandboxTab, "Sandbox")
+
+# self.__sandboxList = self.__buildListWidget("Sandbox", sandboxTab.layout())
+
+# self.__widgetsDict = {
+# "show": self.__showList,
+# "shot": self.__shotList,
+# "name": self.__nameList,
+# "version": self.__versionList,
+# "sandbox": self.__sandboxList,
+# }
+
+# self.__showList.clear()
+# self.__showList.addItems(_getShows())
+# self.__sandboxList.addItems(_getSandboxFiles())
+
+# def __buildListWidget(self, name, parentLayout):
+
+# layout = QtWidgets.QVBoxLayout()
+
+# layout.addWidget(QtWidgets.QLabel(name))
+# listWidget = QtWidgets.QListWidget()
+# listWidget.setAlternatingRowColors(True)
+# layout.addWidget(listWidget)
+
+# parentLayout.addLayout(layout)
+
+# return listWidget
+
+# def __updateShow(self):
+# show = self.__getListSelectionText("show")
+# self.__shotList.clear()
+# self.__shotList.addItems(_getShots(show))
+
+# def __updateShot(self):
+# show = self.__getListSelectionText("show")
+# shot = self.__getListSelectionText("shot")
+# self.__nameList.clear()
+# self.__nameList.addItems(_getAssets(show, shot))
+
+# def __updateAsset(self):
+# show = self.__getListSelectionText("show")
+# shot = self.__getListSelectionText("shot")
+# name = self.__getListSelectionText("name")
+# self.__versionList.clear()
+# self.__versionList.addItems(_getVersions(show, shot, name))
+
+# def __updateVersion(self):
+# pass
+
+# def __getListSelectionText(self, name):
+# currSel = ""
+# w = self.__widgetsDict.get(name, None)
+# if w:
+# sel = w.selectedItems()
+# currSel = sel[0].text() if sel else ""
+
+# return str(currSel)
+
+# def __selectItem(self, listName, itemName):
+# w = self.__widgetsDict.get(listName, None)
+# if w:
+# items = w.findItems(itemName, QtCore.Qt.MatchExactly)
+
+# if items and items[0]:
+# w.setCurrentItem(items[0], QtCore.QItemSelectionModel.Select)
+
+# def setAssetId(self, assetId):
+# """
+# Given an asset id decomposes in to a show, shot, name and
+# version fields and updates the UI to reflect that
+# """
+# assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+# if not assetPlugin.isAssetId(assetId):
+# return
+
+# assetFields = assetPlugin.getAssetFields(assetId, True)
+# for k in ("show", "shot", "name",  "version"):
+# self.__selectItem(k, assetFields[k])
+
+# currIndex = 0
+# if assetFields.get("protocol", "") == "sandbox":
+# currIndex = 1
+# self.__tabWidget.setCurrentIndex(currIndex)
+
+# def getAssetFields(self):
+# fields = {}
+# if self.__tabWidget.currentIndex() == 0: # Asset
+# fields["protocol"] = "asset"
+# for k in ("show", "shot", "name", "version"):
+# fields[k] = self.__getListSelectionText(k)
+# else: # Sandbox
+# selectedItems = self.__sandboxList.selectedItems()
+# if not selectedItems:
+# return fields
+# fields["protocol"] = "sandbox"
+# assetId = str(selectedItems[0].text())
+# parts = assetId.split(".")
+# for i, k in enumerate(("show", "shot", "name", "version")):
+# fields[k] = parts[i]
+
+# return fields
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+# class ShotgunComboWidget(QtWidgets.QFrame):
+# """
+# Asset browser using combo boxes. This is used for asset selection when
+# saving.
+# """
+
+# def __init__(self):
+# """Builds the initial combose box UI"""
+
+# QtWidgets.QFrame.__init__(self)
+
+# QtWidgets.QVBoxLayout(self)
+
+# assetFrame = QtWidgets.QFrame(self)
+# QtWidgets.QHBoxLayout(assetFrame)
+# self.layout().addWidget(assetFrame)
+
+# assetFrame.layout().addWidget(QtWidgets.QLabel("show:"))
+# self.__showCombobox = QtWidgets.QComboBox()
+# assetFrame.layout().addWidget(self.__showCombobox)
+
+# assetFrame.layout().addWidget(QtWidgets.QLabel("shot:"))
+# self.__shotCombobox = QtWidgets.QComboBox()
+# assetFrame.layout().addWidget(self.__shotCombobox)
+
+# assetFrame.layout().addWidget(QtWidgets.QLabel("asset:"))
+# self.__assetCombobox = QtWidgets.QComboBox()
+# assetFrame.layout().addWidget(self.__assetCombobox)
+
+# assetFrame.layout().addWidget(QtWidgets.QLabel("version:"))
+# self.__versionCombobox = QtWidgets.QComboBox()
+# assetFrame.layout().addWidget(self.__versionCombobox)
+
+# self.__showCombobox.currentIndexChanged.connect(self.__updateShow)
+# self.__shotCombobox.currentIndexChanged.connect(self.__updateShot)
+# self.__assetCombobox.currentIndexChanged.connect(self.__updateAsset)
+# self.__versionCombobox.currentIndexChanged.connect(self.__updateVersion)
+
+# # Modify the integrated QListViews to lay out the items every time the
+# # view is resized, so that changes in the application font preferences
+# # are correctly reflected
+# for combobox in (self.__showCombobox, self.__shotCombobox,
+# self.__assetCombobox, self.__versionCombobox):
+# combobox.view().setResizeMode(QtWidgets.QListView.Adjust)
+
+# self.__sandboxCheckBox = QtWidgets.QCheckBox('Save to Sandbox', self)
+# self.layout().addWidget(self.__sandboxCheckBox)
+
+# self.__showCombobox.addItems(_getShows())
+
+# def __updateShow(self):
+# """Updates the value in the 'show' combo box UI"""
+
+# show = str(self.__showCombobox.currentText())
+# self.__shotCombobox.clear()
+# self.__shotCombobox.addItems(_getShots(show))
+
+# def __updateShot(self):
+# """Updates the value in the 'shot' combo box UI"""
+# show = str(self.__showCombobox.currentText())
+# shot = str(self.__shotCombobox.currentText())
+# self.__assetCombobox.clear()
+# self.__assetCombobox.addItems(_getAssets(show, shot))
+
+# def __updateAsset(self):
+# """Updates the value in the 'asset' combo box UI"""
+# show = str(self.__showCombobox.currentText())
+# shot = str(self.__shotCombobox.currentText())
+# asset = str(self.__assetCombobox.currentText())
+# self.__versionCombobox.clear()
+# self.__versionCombobox.addItems(_getVersions(show, shot, asset))
+
+# def __updateVersion(self):
+# """Updates the value in the 'versions' combo box UI"""
+# pass
+
+# def setEditable(self, editable):
+# """Propagate editability down to child widgets"""
+# self.__showCombobox.setEditable(editable)
+# self.__shotCombobox.setEditable(editable)
+# self.__assetCombobox.setEditable(editable)
+# self.__versionCombobox.setEditable(editable)
+
+# def setAssetId(self, assetId):
+# """Given an asset ID, decompose in to a show, shot, asset name
+# and asset version and update the UI to reflect that.
+# """
+# assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+# if not assetPlugin.isAssetId(assetId):
+# return
+
+# assetFields = assetPlugin.getAssetFields(assetId, True)
+# self.__showCombobox.setEditText(assetFields["show"])
+# self.__shotCombobox.setEditText(assetFields["shot"])
+# self.__assetCombobox.setEditText(assetFields[AssetAPI.kAssetFieldName])
+# self.__versionCombobox.setEditText(assetFields[AssetAPI.kAssetFieldVersion])
+
+# if assetId.startswith("sandbox://"):
+# self.__sandboxCheckBox.setCheckState(QtCore.Qt.Checked)
+
+# def getAssetFields(self):
+# """Get hold of the individual asset fields from the UI"""
+# show = str(self.__showCombobox.currentText())
+# shot = str(self.__shotCombobox.currentText())
+# asset = str(self.__assetCombobox.currentText())
+# version = str(self.__versionCombobox.currentText())
+
+# protocol = "asset"
+# if self.__sandboxCheckBox.checkState() == QtCore.Qt.Checked:
+# protocol = "sandbox"
+
+# return {"protocol" : protocol,
+# "show" : show,
+# "shot" : shot,
+# AssetAPI.kAssetFieldName : asset,
+# AssetAPI.kAssetFieldVersion : version}
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+# class ShotgunBrowser(QtWidgets.QFrame):
+# """
+# The mock asset browser class. This is added to the browser as a tab in the
+# configureAssetBrowser function of the ShotgunAssetWidgetDelegate.
+
+# The mock browser uses two different UIs depending on the save mode. For
+# saving, the asset ID is specified using combo boxes. For loading assets,
+# assets are chosen from a list view (see ShotgunComboWidget and
+# ShotgunAssetListsWidget respectively).
+# """
+
+# def __init__( self , *args , **kargs ) :
+# QtWidgets.QFrame.__init__( self , *args )
+
+# QtWidgets.QVBoxLayout(self)
+
+# self.__assetIdLayout = QtWidgets.QHBoxLayout()
+# self.__widget = None
+# self.__saveMode = False
+# self.__context = ""
+# self.__requestedLocation = ""
+
+# def showEvent(self, event):
+# if not self.__widget:
+# if self.__saveMode:
+# self.__widget = ShotgunComboWidget()
+# self.__widget.setEditable(True)
+# else:
+# self.__widget = ShotgunAssetListsWidget()
+# self.layout().addWidget(self.__widget)
+
+# if self.__requestedLocation and self.__widget:
+# self.__widget.setAssetId(self.__requestedLocation)
+
+# def setContext(self, context):
+# self.__context = context
+
+# def getExtraOptions(self):
+# return {"context": self.__context}
+
+# def setSaveMode(self, saveMode):
+# self.__saveMode = saveMode
+
+# def setLocation(self, assetId):
+# self.__requestedLocation = assetId
+
+# def selectionValid(self):
+# return True
+
+# def getResult(self):
+# assetFields = self.__widget.getAssetFields()
+# assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+
+# return assetPlugin.buildAssetId(assetFields)
+
+
+class ScenegraphXMLFileBrowser(QtWidgets.QLabel):
+    pass
+
+
+class AlembicFileBrowser(QtWidgets.QLabel):
+    pass
+
+
+class ShotgunBrowser(QtWidgets.QFrame):
+    def __init__(self, *args, **kwargs):
+        QtWidgets.QFrame.__init__(self, *args)
+        self.tk = getTK()
+        self.__widget = None
+
+        self.mainLayout = QtWidgets.QHBoxLayout()
+        self.setLayout(self.mainLayout)
+
+    def setSaveMode(self, saveMode):
+        self.__saveMode = saveMode
+
+    def setLocation(self, assetId):
+        self.__requestedLocation = assetId
+
+    def showEvent(self, event):
+        if not self.__widget:
+            self.__widget = self.getWidgetFromContext(self.__context)
+            self.mainLayout.addWidget(self.__widget)
+
+    def getWidgetFromContext(self, context):
+        widget = QtWidgets.QLabel("Context not supported")
+
+        if "scenegraph" in context:
+            widget = ScenegraphXMLFileBrowser("Make a nice sgxml browser")
+        elif "alembic" in context:
+            widget = AlembicFileBrowser("Make a nice alembic browser")
+
+        return widget
+
+    def setContext(self, context):
+        self.__context = context
+
+    def getAssetFields(self):
+        pass
+
+    def getResult(self):
+        # assetFields = path_to_fields(self.tk, self.__requestedLocation)
+        # assetPlugin = AssetAPI.GetDefaultAssetPlugin()
+        # assetId = assetPlugin.buildAssetId(assetFields)
+
+        dummyAssetId = "sgtk://shot_scenegraphxml_publish?Sequence=e100a&Scene=e100a_008&Shot=e100a_008_245&StepGroup=layout&Task=prodDel&sgxml_type=performance&version=3"
+        return dummyAssetId
+
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+
+class ShotgunAssetWidgetDelegate(AssetWidgetDelegatePlugins.BaseAssetWidgetDelegate):
+    """
+    The widget delegate class that implements BaseAssetWidgetDelegate.
+
+    This class is registered to be associated with PyMultiMockAsset and
+    represents the entry point for configuring the render widget, control
+    widget and asset browser.
+    """
+
+    def createAssetControlWidget(self, parent):
+        """The hook in to katana that creates the asset control widget"""
+        w = ShotgunAssetControlWidget(parent, self.getWidgetHints())
+        parent.layout().addWidget(w)
+        return w
+
+    # def createAssetRenderWidget(self, parent, outputInfo):
+    # """The hook in to katana that creates the asset render control widget"""
+
+    # w = PyMockAssetRenderWidget(parent, self.getWidgetHints(), outputInfo)
+    # parent.layout().addWidget(w)
+    # return w
+
+    def configureAssetBrowser(self, browser):
+        """
+        Configure the asset browser.
+
+        For example, to disable an asset browser for shader lookups on the
+        Material node, check for a specific context and return early:
+
+         if context == AssetAPI.kAssetContextShader:
+             _logDebug("Do not show asset browser for shaders.")
+             return
+        """
+        AssetWidgetDelegatePlugins.BaseAssetWidgetDelegate.configureAssetBrowser(
+            self, browser
+        )
+        valuePolicy = self.getValuePolicy()
+        hints = valuePolicy.getWidgetHints()
+        context = hints.get("context")
+
+        _logDebug("configureAssetBrowser hints: %s" % hints)
+
+        index = browser.addBrowserTab(ShotgunBrowser, "Shotgun")
+        inputPath = str(valuePolicy.getValue())
+        browser.setCurrentIndex(index)
+        browser.getBrowser(index).setLocation(inputPath)
+        browser.getBrowser(index).setContext(context)
+
+    def shouldAddFileTabToAssetBrowser(self):
+        """Yes we want to keep the file tab in the asset browser"""
+        return True
+
+    def shouldAddStandardMenuItems(self):
+        """Yes we want asset ids to have a standard dropdown menu"""
+        return True
+
+    def getQuickLinkPathsForContext(self, context):
+        return AssetWidgetDelegatePlugins.BaseAssetWidgetDelegate.getQuickLinkPathsForContext(
+            self, context
+        )
+
+
+# ///////////////////////////////////////////////////////////////////////////////
+
+# # Register the widget delegate to be associated with PyMultiMockAsset
+# NOTE(kk): Uncomment for testing
+
+# PluginRegistry = [
+# ("AssetWidgetDelegate", 1, "Shotgun",
+# ShotgunAssetWidgetDelegate),
+# ]

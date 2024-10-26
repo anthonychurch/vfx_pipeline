@@ -1,0 +1,127 @@
+import maya.cmds
+import random
+import math
+
+def createLocatorsOnJointChain(jointArray):
+	returnArray = []
+	previousLocator = jointArray[0]
+	
+	for j in range(0,len(jointArray),1):
+		name = jointArray[j] + '_LOC'
+		createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+		constainLocator = maya.cmds.parentConstraint(jointArray[j], createLocator, weight=1 )
+		maya.cmds.delete(constainLocator)
+		returnArray.append(createLocator)
+		if(j != 0):
+			maya.cmds.parent(createLocator,previousLocator,a=True)
+			maya.cmds.setAttr(createLocator + '.translateX', 0)
+			maya.cmds.setAttr(createLocator + '.translateY', 0)
+			maya.cmds.setAttr(createLocator + '.translateZ', 0)
+			maya.cmds.setAttr(createLocator + '.rotateX', 0)
+			maya.cmds.setAttr(createLocator + '.rotateY', 0)
+			maya.cmds.setAttr(createLocator + '.rotateZ', 0)
+		
+		previousLocator = createLocator
+
+	return returnArray
+
+###############################################################################################
+#     SELECT:	
+###############################################################################################
+mainLocators = maya.cmds.ls(selection=True)
+#ctrls = createLocatorsOnJointChain(sel)
+
+def editTxtGrpButtonArray(name,type):
+	array = maya.cmds.ls(selection=True)
+	out = ''
+	for i in array:
+		out = out + i + '    '
+		
+	if(type == 'textFieldButtonGrp'):
+		maya.cmds.textFieldButtonGrp( name, e=True, text=out)
+
+
+def runWindow(windowName):
+	getCtrls = maya.cmds.textFieldButtonGrp( windowName + '_mainCtrls', q=True, text=True )
+	getLocators = maya.cmds.textFieldButtonGrp( windowName + '_mainLocators', q=True, text=True )
+	ctrls = getCtrls.split()
+	locators = getLocators.split()
+
+
+def buildWindow(windowName,windowTitle, line1,line2):
+	questionButtonHeight=23
+	maya.cmds.window( windowName, title= windowTitle, s=True, iconName='Short Name', widthHeight=(500, 500))
+	maya.cmds.frameLayout(  windowName + '_frameLayout1', label=' ', borderStyle="in", lv=False, bv=False, mw=10, mh=10)
+	maya.cmds.columnLayout(windowName + '_column1', adjustableColumn=True)
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.rowLayout(windowName + '_row1',numberOfColumns=3, columnWidth3=(80, 80, 80), adjustableColumn3=3, columnAlign3=('left','left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+	
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( label= '   ' )
+
+	maya.cmds.frameLayout(windowName + '_formBase', label='Tabs', lv=False, labelAlign='top', borderStyle='in')
+	form = maya.cmds.formLayout(windowName + '_form1')
+	tabs = maya.cmds.tabLayout(windowName + '_tabs1', innerMarginWidth=5, innerMarginHeight=5)
+	maya.cmds.formLayout( form, edit=True, attachForm=[(tabs, 'top', 0), (tabs, 'left', 0), (tabs, 'bottom', 0), (tabs, 'right', 0)] )
+	
+	maya.cmds.columnLayout('')
+	maya.cmds.scrollLayout('Global' , width=500, height=300, horizontalScrollBarThickness=16, verticalScrollBarThickness=16)
+
+	maya.cmds.rowLayout(windowName + '_row2',numberOfColumns=2, columnWidth2=(450, 20), adjustableColumn2=2, columnAlign2=('left','left'), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+	
+	maya.cmds.columnLayout(windowName + '_global1a', rs=3)
+	#maya.cmds.checkBoxGrp(windowName + '_stretch', numberOfCheckBoxes=1, label='Stetch Joints', value1=True, cc='togglesystems("' + windowName + '")')
+	#maya.cmds.textFieldGrp( windowName + '_sidePrefix', label='Side Prefix:', text='L_' )
+	#sp = maya.cmds.textFieldGrp( windowName + '_sidePrefix', q=True, text=True )
+	#maya.cmds.textFieldGrp( windowName + '_limbTypeName', label='Limb Type Name:', text='leg_' )
+	#ltn = maya.cmds.textFieldGrp( windowName + '_limbTypeName', q=True, text=True )
+	#getIkFkswitch = sp + ltn + 'IKFK_CTRL'
+	#maya.cmds.radioButtonGrp( windowName + '_limbType', label='Type Of Limb:', labelArray3=['BipedLeg', 'QuadrapedLeg', 'Other'], numberOfRadioButtons=3, en=False, sl=1 )
+	#maya.cmds.radioButtonGrp( windowName + '_ctrlAimAxis', label='Control Aim Axis:', labelArray3=['x', 'y', 'z'], numberOfRadioButtons=3, en=True, sl=1 )
+	#maya.cmds.intFieldGrp( windowName + '_howwManyJointstoInsert', numberOfFields=1, label='Number of Subjoints to insert:', value1=2, cc='togglesystems("' + windowName + '")', en=True )
+	#getstartJoint = sp + 'hip'
+	#getMidJoint = sp + 'knee'
+	#getEndJoint = sp + 'ankle'
+	#getToeJoint = sp + 'toe'
+	#msg = windowName + '_startJoint'
+	#run = 'runScript("' + windowName + '_startJoint' + '")'
+	maya.cmds.text( label= line1 )
+	maya.cmds.textFieldButtonGrp( windowName + '_mainCtrls', label='Get Controls:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_mainCtrls' + '","textFieldButtonGrp")' )
+	maya.cmds.text( label= line2 )
+	maya.cmds.textFieldButtonGrp( windowName + '_mainLocators', label='Get Locators:', text='', buttonLabel='Select', en=True, bc='editTxtGrpButtonArray("' + windowName + '_mainLocators' + '","textFieldButtonGrp")' )
+	
+	maya.cmds.setParent('..')
+
+	maya.cmds.columnLayout(windowName + '_global1b', rs=3)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.button(label='?', height = questionButtonHeight)
+	maya.cmds.text( label= '   ' )
+	maya.cmds.setParent('..')
+	
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+	maya.cmds.setParent('..')
+
+	maya.cmds.text( windowName + '_space1', label='' )
+	maya.cmds.text( windowName + '_space2', label='' )
+	maya.cmds.button(windowName + '_CreateSystem', label='Run Script', c='runWindow("' + windowName + '")' )
+
+	maya.cmds.showWindow( windowName )
+
+
+
+line1 = '	SELECT THE MAIN CONTROLS:-'
+line2 = '	SELECT THE LOCATORS THAT COINCIDE THE MIN CONTROLS:-'
+windowTitle = 'Set Up Wing Flex'
+rebuildCurveWindowName = 'SetUpWingFlex'
+deleteWindow(rebuildCurveWindowName)
+buildWindow(rebuildCurveWindowName,windowTitle,line1,line2)
+

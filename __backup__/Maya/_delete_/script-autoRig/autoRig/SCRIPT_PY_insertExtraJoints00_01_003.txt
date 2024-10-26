@@ -1,0 +1,68 @@
+import maya.cmds
+import random
+import math
+
+
+def insertExtraJoints00(selectedJoints,jointTypePrefix,sidePrefix,jointAimAxis,howManyTweenJoints):
+	print('insertExtraJoints00 :: selectedJoints = ' + str(selectedJoints))
+	maya.cmds.select( clear=True )
+	oldMasterJoints = []
+	howManySelJoints = len(selectedJoints)
+	alljoints = []
+	jointsInserted = []
+	print('insertExtraJoints00 :: howManySelJoints = ' + str(howManySelJoints))
+	for i in range(0,howManySelJoints-1,1):
+		print('insertExtraJoints00 :: i = ' + str(i))
+		masterJoint = selectedJoints[i]
+		alljoints.append(masterJoint)
+		print('insertExtraJoints00 :: masterJoint = ' + str(masterJoint))
+		print('insertExtraJoints00 :: selectedJoints[i] = ' + str(selectedJoints[i]))
+		t = maya.cmds.rename(selectedJoints[i],'temp_' + masterJoint)
+		oldMasterJoints.append(t)
+		print('insertExtraJoints00 :: oldMasterJoints = ' + str(oldMasterJoints))
+		getOldMasterJointPos = getWStransform(oldMasterJoints[i])
+		masterJointName = findName(masterJoint,sidePrefix)
+		translateAxis = '.t' + jointAimAxis
+		jointDistance = getDistance2Vectors(oldMasterJoints[i],selectedJoints[i+1])
+		jointTweendistance = jointDistance / (howManyTweenJoints + 1)
+		getMasterJointPos = getWStransform(oldMasterJoints[i])
+		previousJoint = maya.cmds.joint( n=masterJoint)
+
+		for j in range(1,howManyTweenJoints+1,1):
+			print('insertExtraJoints00 :: j = ' + str(j))
+			print('insertExtraJoints00 :: howManyTweenJoints = ' + str(howManyTweenJoints))
+			v = incrementPos(jointTweendistance,(j-1)*jointTweendistance,jointAimAxis)
+			previousJoint = maya.cmds.joint( previousJoint,n=sidePrefix + jointTypePrefix[i] + str(j), p=v )
+			alljoints.append(previousJoint)
+			jointsInserted.append(previousJoint)
+
+		setWStransform(masterJoint,getOldMasterJointPos)
+
+		if(jointAimAxis == 'x'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(1,0,0), skip=["x"] )
+			maya.cmds.delete(aim)
+		elif(jointAimAxis == 'y'):
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,1,0), skip=["y"] )
+			maya.cmds.delete(aim)
+		else:
+			aim = maya.cmds.aimConstraint( str(selectedJoints[i+1]), masterJoint, aimVector=(0,0,1), skip=["z"] )
+			maya.cmds.delete(aim)
+	
+		setJointOriention(masterJoint)
+		parent = maya.cmds.listRelatives( oldMasterJoints[i], parent=True )
+		print('insertExtraJoints00 :: parent = ' + str(parent))
+		if(parent != None):
+			maya.cmds.parent(masterJoint,parent[0])
+		
+		maya.cmds.parent(selectedJoints[i+1],previousJoint)
+		maya.cmds.delete(oldMasterJoints[i])
+		maya.cmds.select( clear=True )
+
+	alljoints.append(selectedJoints[howManySelJoints-1])
+	print('insertExtraJoints00 :: alljoints = ' + str(alljoints))
+	print('insertExtraJoints00 :: jointsInserted = ' + str(jointsInserted))
+	return(jointsInserted,alljoints)
+
+sel = maya.cmds.ls(selection=True)
+
+insertExtraJoints00(sel,'joint joint','','x',1)

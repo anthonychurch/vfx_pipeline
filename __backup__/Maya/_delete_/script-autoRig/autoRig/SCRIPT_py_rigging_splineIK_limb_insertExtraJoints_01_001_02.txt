@@ -1,0 +1,88 @@
+#START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#============================================================================================================
+#============================================================================================================
+#INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE
+#print("__________________________INSERT EXTRA SPLINE IK JOINTS BETWEEN THE CONTROL JOINTS TO STOP SPLIPAGE__________________________");
+#INSTRUCTIONS;
+#1. select the SPL joints 
+#2. 
+
+
+selectedJoints = maya.cmds.ls(selection=True)
+howManyJoints = len(selectedJoints)
+print('howManyJoints = ' + str(howManyJoints))
+maya.cmds.select(clear=True)
+
+#i
+#j
+#nextIndex
+#currentJoint
+#nextJoint
+howManyJointsInserted = 6 #4 if there 3 tween control joints; 5 if there 2 tween control joints; 6 if there 1 tween control joints
+increment = 1
+#jointSpacing
+jointsInserted = []
+jointOrinetAxis = '.jointOrientZ'
+
+jointRadius = maya.cmds.getAttr(selectedJoints[0] + '.radius')
+
+sidePrefix = 'L_'
+
+PosOrNeg = 1
+
+if(sidePrefix == 'L_'):
+	PosOrNeg = 1
+	#print('LEFT')
+else:
+	PosOrNeg = 1
+	#print("RIGHT")
+
+
+
+#create the controls
+for i in range(0, howManyJoints-1, 1):
+	
+	nextIndex = i + 1
+	nextJoint = selectedJoints[nextIndex]
+	print('nextJoint = ' + str(nextJoint))
+	currentJoint = selectedJoints[i];
+	tx =  maya.cmds.getAttr(nextJoint  + '.tx')
+	jointSpacing = PosOrNeg * (tx / (howManyJointsInserted +1))
+
+	createJoint = maya.cmds.joint(n=(selectedJoints[i] + '_INIT'))
+	#print('createJoint = ' + str(createJoint))
+	jointINIT = createJoint
+	
+	parentContrain = maya.cmds.parentConstraint(currentJoint, createJoint)
+	maya.cmds.delete(parentContrain[0])
+
+	#string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+	#delete $aimConstrain[0];
+	
+	maya.cmds.setAttr(jointINIT + jointOrinetAxis,0)
+	for j in range(1,howManyJointsInserted+1,1):
+		
+		createJoint = maya.cmds.joint(n=(selectedJoints[i] + '_' + str(increment)))
+		print('createJoint = ' + str(createJoint))
+		#jointsInserted[j - 1] = createJoint
+		jointsInserted.append(createJoint)
+		print('jointsInserted = ' + str(jointsInserted))
+						
+		maya.cmds.setAttr (createJoint + '.tx',jointSpacing)
+		maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+		increment = increment + 1
+
+	
+	print (jointsInserted[howManyJointsInserted-1])
+	maya.cmds.parent(jointsInserted[0],currentJoint)
+	
+	maya.cmds.parent(nextJoint,jointsInserted[len(jointsInserted)-1])
+	
+	maya.cmds.delete(jointINIT)
+	increment = 1
+	
+
+
+
+
+

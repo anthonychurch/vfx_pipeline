@@ -1,0 +1,15 @@
+string $selectControls[] = `ls -sl`;
+
+select "*Constraint*";
+string $selectConstraints[] = `ls -sl`;
+print($selectConstraints);
+
+string $list[] = `listRelatives -ad L_hand_CTRL`;
+float $sizeList = size($list);
+int $i;
+
+for($i = 0;$i < $sizeList; $i++){
+	if($list[$i] == "*Constraint*"){
+		print("boo");
+	}
+}

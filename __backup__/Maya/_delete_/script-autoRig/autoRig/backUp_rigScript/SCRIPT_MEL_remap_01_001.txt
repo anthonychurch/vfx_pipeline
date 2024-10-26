@@ -1,0 +1,38 @@
+
+
+.outputX    to    .inputValue
+
+
+
+.outValue    to    .inputR
+
+
+
+.outputR    to    .colorIfFalse
+
+
+shadingNode -asUtility remapValue;
+
+setAttr remapValue3.value[2].value_FloatValue 1.0;
+setAttr remapValue3.value[2].value_Position 0.5;
+setAttr remapValue3.value[2].value_Interp 1;
+
+setAttr "remapValue1.value[1].value_Position" 1;
+setAttr "remapValue1.value[1].value_FloatValue" 0.0;
+
+setAttr "remapValue1.value[2].value_Position" 0.5;
+setAttr "remapValue1.value[2].value_FloatValue" 1.00;
+
+setAttr "remapValue1.value[0].value_Position" 0.0;
+setAttr "remapValue1.value[0].value_FloatValue" 0.0;
+
+setAttr "remapValue3.inputMin" -8;
+setAttr "remapValue3.inputMax" 10;
+
+
+
+shadingNode -asUtility clamp;
+
+setAttr "clamp2.minR" 0.955;
+setAttr "clamp2.maxR" 1;
+

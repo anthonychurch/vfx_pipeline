@@ -1,0 +1,136 @@
+#Find the position for foot, ball, toe and store them
+#Instructions:
+#1.Create a IK foot fige that has a ankle joint, ball joint, toe joint heading off in front and finally a temporary joint called "_toDelete_heel",
+######that branches from the ankle down to where the heel of the geo meets the ground.
+#2.Select the ankle joint and run script
+
+import maya.cmds
+import random
+import math
+
+maya.cmds.select(hi=True)
+footJoints = maya.cmds.ls(selection=True, type='joint')
+last[] = maya.cmds.ls(selection=True,tail=1) #"_toDelete_heel"
+howManyJoints = len(footJoints)
+prefix = 'L_IK_' #"R_";/////////////////////////////////////////////////////////////////////////NEEDS TO BE GLOBALISED
+toDelete_heel = '_toDelete_heel'
+
+
+
+
+
+
+
+#tipToe locator and position it**************************************************************START*******tipToe locator & position it
+name = 'tipToe_LOC'
+createLocator = maya.cmds.spaceLocator(n=prefix + name, p=(0,0,0))
+whichJointLocation = howManyJoints - 2 #//////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+whichJoint = footJoints[whichJointLocation]
+constainLocator = maya.cmds.pointConstraint(whichJoint, createLocator, offset=(0, 0, 0), skip="y", weight=1 )
+maya.cmds.delete(constainLocator)
+#tipToe locator and position it**************************************************************END*********tipToe locator & position it
+
+string $previousLocator = $createLocator[0];
+
+
+//heel locator and position it******************************************************************START*******heel locator & position it
+string $name = "heel_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+//int $whichJointLocation = 0;/////////////////////////////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+string $whichJoint = $last[0];//"_toDelete_heel"------------------->//OLD CODE//$footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//heel locator and position it******************************************************************END*******heel locator & position it
+
+string $currentLocator = $createLocator[0];
+
+//BREAK OFFSET HEEL LOC#######################################################################################################START
+
+//offset position of heel*************************************************************************START*****offset position of heel
+string $getCurrentLocatorPos = `getAttr ($currentLocator + ".translateZ")`;//////////////////////////////////NEEDS TO BE GLOBALISED
+float $currentPos = $getCurrentLocatorPos;
+float $offset = 1.00;////////////////////////////////////////////////////////////////////////////////////////NEEDS TO BE GLOBALISED
+int $offsetCurrentLocator = $currentPos - $offset;
+string $setCurrentLocatorPos = `setAttr ($currentLocator + ".translateZ") $offsetCurrentLocator`;////////////NEEDS TO BE GLOBALISED
+//offset position of heel**************************************************************************END******offset position of heel
+
+//BREAK OFFSET HEEL LOC#######################################################################################################END
+
+parent -a $currentLocator $previousLocator;
+string $previousLocator = $createLocator[0];
+
+
+//ball locator 1 & position it**********************************************************************START*****ball locator 1 & position it
+string $name = "roll_LOC1";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = $howManyJoints - 3;//////////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//ball locator 1 & position it**********************************************************************END*****ball locator 1 & position it
+
+string $currentLocator = $createLocator[0];
+string $branchPoint = $currentLocator;/////////////////////////////////////////////slect branch point/////////////////////NEEDS TO BE UPDATED
+parent -a $currentLocator $previousLocator;
+string $previousLocator = $createLocator[0];
+
+
+//ball locator 2 & position it**********************************************************************START*****ball locator 2 & position it
+string $name = "ball_LOC1";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 1;//////////////////////////////////////////select ball///////NEEDS TO BE UPDATED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//ball locator 2 & position it**********************************************************************END*****ball locator 2 & position it
+
+string $currentLocator = $createLocator[0];
+
+parent -a $currentLocator $previousLocator;
+string $previousLocator = $createLocator[0];
+
+
+//ankle locator & position it**********************************************************************START*****ankle locator & position it
+string $name = "ankle_LOC1";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 0;//////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//ankle locator & position it**********************************************************************END*****ankle locator & position it
+
+string $currentLocator = $createLocator[0];
+parent -a $currentLocator $previousLocator;
+string $previousLocator = $createLocator[0];
+
+
+
+//BREAK AND GO BACK TO BALL LOC 1#####################################################################################################START
+
+//toe locator 1 & position it**********************************************************************START*****toe locator & position it
+string $name = "toe_LOC1";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 1;//////////////////////////////////////////select foot///////NEEDS TO BE UPDATED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//toe locator 1 & position it**********************************************************************END*****toe locator & position it
+
+string $currentLocator = $createLocator[0];
+parent -a $currentLocator $branchPoint;//////////////////////////////////////////select ball 2///////NEEDS TO BE UPDATED
+string $previousLocator = $createLocator[0];
+
+
+
+//toe locator 2 & position it**********************************************************************START*****toe locator & position it
+string $name = "toe_LOC2";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = $howManyJoints - 2;////////////////////////////////////////select tip Toe///////NEEDS TO BE UPDATED
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+//toe locator 2 & position it**********************************************************************END*****toe locator & position it
+
+string $currentLocator = $createLocator[0];
+parent -a $currentLocator $previousLocator;//////////////////////////////////////////select toe 1///////NEEDS TO BE UPDATED
+string $previousLocator = $createLocator[0];

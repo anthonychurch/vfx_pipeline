@@ -1,0 +1,67 @@
+import maya.cmds
+
+def getShapeNodes2(obj):
+	howManyShapes = 0
+	getShape = maya.cmds.listRelatives(obj, shapes=True)
+	if(getShape == None):
+		print 'ERROR:: getShapeNodes : No Shape Nodes Connected to ' + obj + ' /n'
+	else:
+		howManyShapes = len(getShape)
+	return (getShape, howManyShapes)
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def testNodeType(node,type):
+	value = True
+	nodeType = maya.cmds.objectType( node )
+	if( nodeType != type ):
+		value = False
+		#print 'WARNING:: testNodeType : ' + str(nodeType) + ' does not match ' + type + '/n'
+	return value
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pvGrp2 = pvCtrl + '_grp'
+	exist = False
+	rel = maya.cmds.listRelatives( pvCtrl,parent=True )[0]
+	if(rel == pvGrp):
+		exist = True
+	if(rel == pvGrp2):
+		exist = True
+
+	if(exist == True):
+		loc = maya.cmds.spaceLocator(p=(0,0,0))[0]
+		locShape = getShapeNodes(loc)
+		print(locShape)
+		maya.cmds.parent(loc + '|' + locShape[0][0],shape=True,rm=True)
+		pvCtrlShape = getShapeNodes(pvCtrl)
+		maya.cmds.parent(pvCtrlShape[0][0],loc,shape=True,a=True)
+		#pvGrp = rel
+		#rel = maya.cmds.listRelatives( pvGrp,c=True )[0]
+		#if maya.cmds.objExists(rel):
+		#	maya.cmds.parent(pvGrp,world=True,a=True)
+		#	setWStransform(pvGrp,(0,0,0))
+	#pos = getWStransform(joint)
+	#setWStransform(pvGrp,pos)
+	#rot = getWSrotate(joint)
+	#setWSrotate(pvGrp,rot)
+	#maya.cmds.parent(pvGrp,joint,a=True)
+	#maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	#maya.cmds.parent(pvGrp,world=True,a=True)
+
+	#return pvGrp
+
+
+setupPolVector('L_IK_leg_poleVector_CTRL','tut_ver02_L_knee',1,'y')

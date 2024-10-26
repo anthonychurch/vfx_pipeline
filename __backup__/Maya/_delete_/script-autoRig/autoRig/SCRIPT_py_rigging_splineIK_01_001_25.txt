@@ -1,0 +1,608 @@
+#
+#
+#
+
+import maya.cmds
+import random
+import math
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def setupPolVector(pvCtrl,joint,distance,upAxis):
+	pvGrp = pvCtrl + '_GRP'
+	pos = getWStransform(joint)
+	setWStransform(pvGrp,pos)
+	rot = getWSrotate(joint)
+	setWSrotate(pvGrp,rot)
+	maya.cmds.parent(pvGrp,joint)
+	maya.cmds.setAttr(pvGrp + '.t' + upAxis, distance)
+	maya.cmds.parent(pvGrp,world=True)
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+def setUpGrp(array):
+	i = 0
+	previous = array[0]
+	for a in array:
+		exist = maya.cmds.objExists(a)
+		if(exist == False ):
+			maya.cmds.group(em=True,n=a,w=True)
+			if(i > 0 ):
+				maya.cmds.parent(a,previous,r=True)
+		i = i + 1
+		previous = a
+
+def filterSelection2(array,breakerObj,increment):
+	newArray = []
+	brake = False
+	print ('breakerObj = ' + str(breakerObj) )
+	#for n in array:
+	for n in range(0,len(array),increment):
+		if(brake == False):
+			newArray.append(array[n])
+			if(array[n] == breakerObj):
+				print ('array[n] =  ' + str(breakerObj) )
+				brake = True
+	print ('newArray = ' + str(newArray) )
+	return newArray
+	
+def createIKjoints(jointArray,sidePrefix,jointType,group):
+	newArray = []
+	#brake = False
+	endJoint = jointArray[len(jointArray)-1]
+	print('endJoint = ' + str(endJoint))
+	maya.cmds.select( clear=True )
+	duplicate = maya.cmds.duplicate(jointArray[0])[0]
+	maya.cmds.makeIdentity( duplicate, apply=True, t=0, r=1, s=0, n=0 )
+	maya.cmds.parent(duplicate, w=True)
+	howManyJoints = len(jointArray)
+	for i in range(0,len(jointArray),1):
+		n = findNamePrefix(jointArray[i],sidePrefix)
+		newn = sidePrefix + jointType + n
+		print('duplicate = ' + str(duplicate))
+		j = maya.cmds.rename(duplicate,newn)
+		newArray.append(j)
+		child = maya.cmds.listRelatives(j,c=True,f=True)
+		if(child != None):
+			if(len(child) == 1):
+				duplicate = child[0]
+			else:
+				print('child = ' + str(child))
+				print(str(j) + ' has a branch of Multiple Joints')
+				for c in child:
+					print('c = ' + str(c))
+					gc = maya.cmds.listRelatives(c,c=True,ad=True,f=True)
+					print('gc = ' + str(gc))
+					if(gc != None):
+						for g in gc:
+							prefixToIgnore = g.rfind('|')
+							test = g[prefixToIgnore+1:len(g)]
+							print('test = ' + str(test))
+							if(test == endJoint):
+								print('c has the end joint = ' + str(c))
+								duplicate = c
+								print('duplicate = ' + str(duplicate))
+					else:	
+						print('deleting ' + str(c))
+						maya.cmds.delete(c)
+
+	last = newArray[len(newArray)-1]
+	c = maya.cmds.listRelatives(last,c=True,f=True)
+	if(c != None):
+		for n in c:
+			maya.cmds.delete(n)
+	maya.cmds.parent(newArray[0],group[len(group)-1])
+	return newArray
+							
+def createIKhandles2(prefix,limbType,type,startJoint,endJoint,pvCtrl,curve,grp):
+	ikh = prefix + limbType + '_ikHandle'
+	if(type != 'ikSplineSolver'):
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+		print('h = ' + str(h))
+		if(type == 'ikRPsolver'):
+			maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	else:
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type, ccv = False, c = curve)
+		print('h = ' + str(h))
+		maya.cmds.parent(h[0],grp)
+				
+	return h
+
+def getTweenJoints(jointArray,numberTweenJoints):
+	increment = 0
+	newArray = []
+	#print('increment = ' + str(increment) )
+	print('jointArray = ' + str(jointArray) )
+	for j in range(0,len(jointArray),1):
+		print('j = ' + str(j) )
+		if( j == increment ):
+			increment = increment + howManyTweenJoints + 1
+			print('increment = ' + str(increment) )
+		else:
+			newArray.append(jointArray[j])
+			print('newArray = ' + str(newArray) )
+
+	return newArray
+
+def insertHonManySplineIKJoints(howManyTweenJoints,howManySplineIKControlJoints,tweenSplineJoints):
+	if(howManySplineIKControlJoints == 0):
+		howManySplineIKControlJoints = 1
+	cj =  (howManyTweenJoints + 1) * howManySplineIKControlJoints
+	tsj = (cj+1) * tweenSplineJoints
+	multiplier = tweenSplineJoints + 1
+	# print('tsj = ' + str(tsj))
+	return (tsj,multiplier)
+
+def insertExtraJoints(jointArray,howManyJointsInserted,multiplier,sidePrefix,jointAimAxis,jointOrientAxis):
+	returnArray = []
+	print('howManyJointsInserted = ' + str(howManyJointsInserted))
+	
+	howManyJoints = len(jointArray)
+	jointRadius = maya.cmds.getAttr(jointArray[0] + '.radius')
+
+	PosOrNeg = 1
+
+	if(sidePrefix == 'L_'):
+		PosOrNeg = 1
+		#print('LEFT')
+	else:
+		PosOrNeg = 1
+		#print("RIGHT")
+
+	#create the controls
+	for i in range(0, howManyJoints-1, 1):
+		jointsInserted = []
+		increment = 1
+		nextIndex = i + 1
+		nextJoint = jointArray[nextIndex]
+		print('nextJoint = ' + str(nextJoint))
+		currentJoint = jointArray[i];
+		translate =  maya.cmds.getAttr(nextJoint  + '.t' + jointAimAxis)
+		jointSpacing = PosOrNeg * (translate / (howManyJointsInserted))
+		createJoint = maya.cmds.joint(n=(jointArray[i] + '_INIT'))
+		#print('createJoint = ' + str(createJoint))
+		jointINIT = createJoint
+	
+		parentContrain = maya.cmds.parentConstraint(currentJoint, createJoint)
+		maya.cmds.delete(parentContrain[0])
+
+		#string $aimConstrain[] = `aimConstraint $nextJoint $createJoint`;
+		#delete $aimConstrain[0];
+		
+		maya.cmds.setAttr(jointINIT + '.jointOrient' + jointOrientAxis,0)
+		subInc = 1
+		for j in range(1,howManyJointsInserted,1):
+			
+			print('j = ' + str(j))
+			if(subInc == multiplier-1):
+				subInc = 'ctrl'
+
+			createJoint = maya.cmds.joint(n=(jointArray[i] + '_' + str(increment) + '_' + str(subInc)))
+			returnArray.append(createJoint)
+			print('createJoint = ' + str(createJoint))
+			#jointsInserted[j - 1] = createJoint
+			jointsInserted.append(createJoint)
+			print('jointsInserted = ' + str(jointsInserted))
+						
+			maya.cmds.setAttr (createJoint + '.t' + jointAimAxis,jointSpacing)
+			maya.cmds.setAttr (createJoint + '.radius', jointRadius)
+			if(subInc != 'ctrl'):
+				subInc = subInc + 1
+			else:
+				subInc = 1 
+				increment = increment + 1
+						
+		print (jointsInserted)
+		maya.cmds.parent(jointsInserted[0],currentJoint)
+	
+		maya.cmds.parent(nextJoint,jointsInserted[len(jointsInserted)-1])
+	
+		maya.cmds.delete(jointINIT)
+		increment = 1
+
+	return returnArray
+
+def createArrowCtrl(name,colour,axis):
+	maya.cmds.curve(p=[(0,0,-14),(0,0,-14),(-4,0,-10),(-4,0,-10),(-4,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-10),(-2,0,-2),(-2,0,-2),(-2,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-2),(-10,0,-4),(-10,0,-4),(-10,0,-4),(-14,0,0),(-14,0,0),(-14,0,0),(-10,0,4),(-10,0,4),(-10,0,4),(-10,0,2),(-10,0,2),(-10,0,2),(-2,0,2),(-2,0,2),(-2,0,2),(-2,0,10),(-2,0,10),(-2,0,10),(-4,0,10),(-4,0,10),(-4,0,10),(0,0,14),(0,0,14),(0,0,14),(4,0,10),(4,0,10),(4,0,10),(2,0,10),(2,0,10),(2,0,10),(2,0,2),(2,0,2),(2,0,2),(10,0,2),(10,0,2),(10,0,2),(10,0,4),(10,0,4),(10,0,4),(14,0,0),(14,0,0),(14,0,0),(10,0,-4),(10,0,-4),(10,0,-4),(10,0,-2),(10,0,-2),(10,0,-2),(2,0,-2),(2,0,-2),(2,0,-2),(2,0,-10),(2,0,-10),(2,0,-10),(4,0,-10),(4,0,-10),(4,0,-10),(0,0,-14),(0,0,-14)],k=[0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,13,13,14,14,14,15,15,15,16,16,16,17,17,17,18,18,18,19,19,19,20,20,20,21,21,21,22,22,22,23,23,23,24,24,24])
+	ctrl = maya.cmds.ls(selection=True)
+	maya.cmds.rename(ctrl,name)
+	shpe = getShapeNodes(name)
+	maya.cmds.setAttr(str(shpe[0]) + '.overrideEnabled',1)
+	maya.cmds.setAttr(str(shpe[0]) + '.overrideColor', colour)
+	maya.cmds.setAttr(str(shpe[0]) + '.rotate' + str(axis), 90)
+	maya.cmds.makeIdentity( str(shpe[0]), apply=True, t=1, r=1, s=1 )
+	return name
+		
+def createCurve(objArray,name,grp):
+	howManyObjs = len(objArray)
+	print ('howManyObjs = ' + str(howManyObjs))
+	points =''
+	pos1 = (0,0,0)
+	for i in range(0,howManyObjs,1):
+		print ('i = ' + str(i))
+		if(i != 1):
+			pos = getWStransform(objArray[i])
+			p = '(' + str(pos[0]) + ',' + str(pos[1]) + ',' + str(pos[2]) + ')'
+			print('p = ' + str(p))
+			if(i != howManyObjs-1):
+				p = p + ', '
+		else:
+			pos1 = getWStransform(objArray[i])
+			print('pos1 = ' + str(pos1))
+		points = points + p
+		print('points = ' + str(points))
+
+	eval('maya.cmds.curve(p=[' + points + '])')
+	curve = maya.cmds.ls(selection=True)
+	print ('curve = ' + str(curve))
+	rename = maya.cmds.rename(curve,name)
+	maya.cmds.parent(rename,grp)
+	setWStransform(str(rename) + '.cv[1]',pos1)
+
+	#returns name of curve and number of CV's
+	return (rename,howManyObjs-1)
+
+def clusterCurve(curve,nme,grp):
+	maya.cmds.select(curve + '.cv[*]')
+	cvs = maya.cmds.ls(selection=True)
+	#print ('cvs = ' + str(cvs))
+	#print('cvs length = ' + str(len(cvs)))
+	rf = cvs[0].rfind(':')
+	#print ('rf = ' + str(rf))
+	number = int(cvs[0][rf+1])
+	print ('number = ' + str(number))
+	
+	listOfClusters = []
+	for i in range(0,number+1,1):
+		c = maya.cmds.cluster(str(curve) + '.cv[' + str(i) + ']')
+		nn = maya.cmds.rename(c[1],nme+str(i+1))
+		listOfClusters.append(nn)
+		if( grp != None ):
+			maya.cmds.parent(nn,grp)
+
+	print ('listOfClusters = ' + str(listOfClusters))
+	return listOfClusters
+
+def setUpSplineIKstretch(jointArray,prefix,crve,aimAxis):
+	spineNormaliseNode = prefix + 'spline_normalize_multiplyDivide1'
+	spineMultiplyNode = prefix + 'spline_multiplier_multiplyDivide1'
+	curveInfo = prefix + 'spline_curveInfo1'
+
+	howManyJoints = len(jointArray)
+
+	howManyNodes = int(math.ceil(len(jointArray) / 3))
+	#START////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+	#CREATE CURVE INFO AND MULTIPLYDIVIDE NODES
+	curveInfoNode = maya.cmds.arclen(crve, ch=True)
+	multiplierNode = maya.cmds.shadingNode('multiplyDivide',n=spineNormaliseNode + '1',au=True)
+
+	spineNormaliseNode = multiplierNode #ENSURE THAT THERE CONTINUITY THROUGH OUT THE SCRIPT
+
+	#CONNECT ARCLENGTH TO INPUT1X 
+	socket = multiplierNode + '.input1X'
+	connector = curveInfoNode + '.arcLength'
+	maya.cmds.connectAttr(connector, socket, force=True)
+
+	#SET INPUT2X TO ARCLENGTH VALUE AND SET MULTIPLEDIVED NODES OPERATION TO DIVIDE
+	socketAttribute = ".input2X";
+
+	maya.cmds.setAttr(multiplierNode + '.operation',2)
+	arcLength = maya.cmds.getAttr(connector)
+
+	maya.cmds.setAttr(multiplierNode + '.input2X', arcLength)
+
+	maya.cmds.rename(curveInfoNode, curveInfo)
+	#END/////////////////////////////////////////////////////////////////////////////////////CREATE CURVE INFO NODE FOR CHAR SPINE 
+
+	#START///////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+	#CREATE MULTIPLYDIVIDE NODES 
+	for i in range(0,howManyNodes,1):
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=spineMultiplyNode + '1', au=True)
+
+	connectorAttribute1 = '.outputX' #change this variable
+	socketAttribute1 = '.input' #change this variable
+	connector1 = spineNormaliseNode + connectorAttribute1
+	connectorAttribute2 = '.output'
+	
+	whichJoint = 1
+
+	whichAxis = [' ', 'X', 'Y', 'Z']
+	brake = 0
+
+	print ('jointArray 1 = ' + str(jointArray))
+
+	#CONNECT THE NORMALISE NODE TO THE MULTIPLYDIVIDE NODES, COPY SPINE JOINT TRANSLATEX TO MULTIPLYDIVIDE NODES INPUT 1XYZ ATTRIBUTES AND 
+	#CONNECT MULTIPLYDIVIDE NODES OUTPUT XYZ TO SPINE JOINT TRANSLATEX
+	for i in range(0, howManyNodes, 1):
+		
+		multiply = i + 1
+	
+		for j in range(1, 4, 1):
+			if(brake == 0):
+				
+				socket1 = spineMultiplyNode + str(multiply) + (socketAttribute1 + '2' + whichAxis[j])
+				maya.cmds.connectAttr(connector1, socket1, force=True)
+		
+				getAttr = maya.cmds.getAttr(jointArray[whichJoint] + '.t' + aimAxis)
+				setAttr = maya.cmds.setAttr(spineMultiplyNode + str(multiply) + (socketAttribute1 + '1' + whichAxis[j]), getAttr)
+		
+				connector2 = spineMultiplyNode + str(multiply) + (connectorAttribute2 + whichAxis[j])
+				print ('connector2 = ' + str(connector2))
+				socket2 = (jointArray[whichJoint] + '.t' + aimAxis)
+				print ('socket2 = ' + str(socket2))
+				maya.cmds.connectAttr(connector2, socket2, force=True)
+
+				whichJoint = whichJoint + 1
+	
+				print ('whichJoint = ' + str(whichJoint))
+				print ('howManyJoints = ' + str(howManyJoints))
+
+				#LOOP BREAK TO CATER FOR ODD NUMBER OF JOINTS
+				if(whichJoint == howManyJoints):
+					brake = 1
+
+	#END/////////////////////////////////////////////////////////////////////////////////////CREATE MULTIPLYDIVIDE NODES TO BE CONNECTED TO THE INDIVIDUAL JOINTS TRANSLATEX 
+
+def setConstraint(contraintType, source, destination, name):
+	if(contraintType == 'parent'):
+		constraint = maya.cmds.parentConstraint(ik,splineIK, mo=True, name = name)
+	else:
+		constraint = maya.cmds.pointConstraint(ik,splineIK, mo=True, name = name)
+	return constraint
+		 
+def setUpSplineIKControls(clustered, ikCtrl, fkCtrl, splineIkCtrl, name):
+	if(clustered == True):
+		#point constrain the cluster to the nearest control joint
+		if(ikCtrl != None):
+			ik = setConstraint('point', ikCtrl, splineIkCtrl, name)
+			if(fkCtrl != None):
+				fk = setConstraint('point', fkCtrl, splineIkCtrl, name)
+		else:setUpSplineIKControls
+			fk = setConstraint('point', fkCtrl, splineIkCtrl, name)
+	else:
+		if(ikCtrl != None):
+			ik = setConstraint('parent', ikCtrl, splineIkCtrl, name)
+			if(fkCtrl != None):
+				fk = setConstraint('parent', fkCtrl, splineIkCtrl, name)
+		else:
+			fk = setConstraint('parent', fkCtrl, splineIkCtrl, name)
+	return(ik,fk)
+
+def createSplineIKControls(jointsArray, masterCtrl):
+	grpArray = []
+	ctrlArray = []
+	#create the controls
+	for i in range(0, len(jointsArray), 1):
+		#select only the control joints
+		index = i * divide
+		#print ('index = ' + index + ';   ')
+	
+		copy = maya.cmds.duplicate(masterCtrl, n=(jointsArra[index] + '_CTRL'))
+		group1 = maya.cmds.group(copy[0], n=(jointsArra[index] + '_AV'))
+		group2 = maya.cmds.group(group1, n=(jointsArra[index] + '_NULL'))
+		group3 = maya.cmds.group(group2, n=(jointsArra[index] + '_GRP'))
+		grpArray.append(group3)
+		ctrlArray.append(copy[0])
+			
+		parentConstraint = maya.cmds.pointConstraint( jointsArra[index], group3)
+		maya.cmds.delete(parentConstraint[0])
+		
+		maya.cmds.select(copy[0])
+		maya.cmds.makeIdentity( apply=True, translate=True, rotate=True, scale=True, normal=False)
+
+	return(ctrlArray,grpArray)
+
+
+def splineIKrotation(jointsArray):
+	#create multiply and blend nodes 
+	IKrotateMultiply = sidePrefix + 'IK_' + limbTypeName + 'rotator_multiplyDivide'
+	FKrotateMultiply = sidePrefix + 'FK_' + limbTypeName + 'rotator_multiplyDivide'
+	IKFKrotateBlend =  sidePrefix + 'IKFK_' + limbTypeName + 'blend'
+
+	IKrotateArry = []
+	FKrotateArry = []
+	IKFKrotateArry = []
+
+	whichAxis = ['X', 'Y', 'Z']
+	whichColour = ['R', 'B', 'G']
+	fraction = 1 /(len(splineIKCTRLjoints)-1)
+	print('fraction = ' + str(fraction))
+
+	for i in range(0, len(jointsArray), 1):
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=IKrotateMultiply + '1', au=True)
+		IKrotateArry.append(multiplierNode)
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=FKrotateMultiply + '1', au=True)
+		FKrotateArry.append(multiplierNode)
+		multiplierNode = maya.cmds.shadingNode('multiplyDivide', n=IKFKrotateBlend + '1', au=True)
+		IKFKrotateArry.append(multiplierNode)
+
+		#Connect Multiple nodes to blend
+		offset = i + 1
+
+		brake = 0
+
+		for j in range (0, 3, 1):
+
+			if(brake == 0):
+				IKconnector = IKrotateArry[i] + '.output' + whichAxis[j]
+				FKconnector = FKrotateArry[i] + '.output' + whichAxis[j]
+				IKsocket = IKFKrotateArry[i] + '.color1' + whichColour[j]
+				FKsocket = IKFKrotateArry[i] + '.color2' + whichColour[j]
+
+				maya.cmds.connectAttr(IKconnector, IKsocket, force=True)
+				maya.cmds.connectAttr(FKconnector, FKsocket, force=True)
+
+				#connect IK wrist control to Multiply nodes
+				IKsocket = IKrotateArry[i] + '.input1' + whichAxis[j]
+				FKsocket = FKrotateArry[i] + '.input1' + whichAxis[j]
+
+				IKconnector = IKwristCtrl + rotationAxis
+				FKconnector = FKwristCtrl + rotationAxis
+
+				smoothStep = maya.cmds.smoothstep( 0, 1, increment)
+
+				maya.cmds.setAttr(IKrotateArry[i] + '.input2' + whichAxis[j], smoothStep)
+				maya.cmds.setAttr(FKrotateArry[i] + '.input2' + whichAxis[j], smoothStep)
+
+				maya.cmds.connectAttr(IKconnector, IKsocket, force=True)
+				maya.cmds.connectAttr(FKconnector, FKsocket, force=True)
+
+				#increment up the suffix to conect to 'L_armTweak_AV'
+				connector = IKFKrotateArry[i] + '.output' + whichColour[j]
+				socket = (jointsArray[i] + '_AV') + rotationAxis
+				print(str(jointsArray[i]) + '_AV;      ')
+
+				maya.cmds.setAttr(connector, socket)
+
+				if(count > howManyJoints):
+					brake = 1
+
+def masterSetUpSplineIK(selection,sidePrefix,upAxis,howManyTweenJoints,howManyKeyJoints,jointType,limbType,limbTypeName,howManyJointsInserted,jointOrientAxis,jointAimAxis,startJoint, midJoint, endJoint,createSplineIK,masterSplineIKCTRL):
+
+	prefix = sidePrefix + jointType
+
+	groupSkeleton = ['char_GRP','DO_NOT_ALTER_GRP','skeleton_scale_GRP','CTRL_skeleton_GRP']
+	#groupDim = ['char_GRP','DO_NOT_ALTER_GRP','dimension_GRP']
+	groupCurves = ['char_GRP','DO_NOT_ALTER_GRP','curves_GRP']
+	groupHandles = ['char_GRP','DO_NOT_ALTER_GRP','handles_GRP',sidePrefix + jointType + limbTypeName + 'cluster_GRP']
+	skeletonCtrlGrp = groupSkeleton[3]
+
+	if(len(selection) > 2):
+		toeJoint = selection[2]
+		print('toeJoint = ' + str(toeJoint))
+
+	maya.cmds.select(selection[0])
+	maya.cmds.select(hierarchy = True)
+	selHi = maya.cmds.ls(selection = True)
+	selectedJoints = filterSelection2(selHi,endJoint,1)
+	print('selectedJoints = ' + str(selectedJoints))
+	
+	maya.cmds.select(clear=True)
+	setUpGrp(groupSkeleton)
+	splineIKCTRLjoints = selectedJoints
+	print('splineIKCTRLjoints = ' + str(splineIKCTRLjoints))
+
+	if(createSplineIK == True):
+		ej = endJoint
+		print('ej = ' + str(ej))
+		#splineIKjointsFiltered = filterSelection2(splineIKjoints,ej,1)
+		splineIKjointsFiltered = selectedJoints
+		print('splineIKjointsFiltered = ' + str(splineIKjointsFiltered))
+		insertSplineIkJoints = insertHonManySplineIKJoints(howManyTweenJoints,howwManySplineControlJoints,howwManySplineTweenJoints)
+		jointsInserted = insertExtraJoints(splineIKjointsFiltered,insertSplineIkJoints[0],insertSplineIkJoints[1],sidePrefix,jointAimAxis,jointOrientAxis)
+		print('jointsInserted = ' + str(jointsInserted))
+		maya.cmds.select(clear=True)
+		#maya.cmds.select(splineIKjoints[0])
+		maya.cmds.select(startJoint)
+		maya.cmds.select(hierarchy = True)
+		sel = maya.cmds.ls(selection = True)
+		getSplineIKJoints = maya.cmds.ls(selection = True)
+		#getSplineIKJoints = filterSelection2(sel,ej,1)
+		print('getSplineIKJoints = ' + str(getSplineIKJoints))
+		getControlSplineIKjoints = filterSelection2(getSplineIKJoints,ej,insertSplineIkJoints[1]-1)
+		print('getControlSplineIKjoints = ' + str(getControlSplineIKjoints))
+		setUpGrp(groupHandles)
+		setUpGrp(groupCurves)
+		
+		print ('prefix + jointType + curve = ' + str(prefix + jointType + 'curve'))
+		curve = createCurve(getControlSplineIKjoints, prefix + limbTypeName + 'curve',groupCurves[len(groupCurves)-1])
+		print ('curve = ' + str(curve))
+		clusters = clusterCurve(curve[0],prefix + jointType + 'CLUSTER_',groupHandles[len(groupHandles)-1])
+
+		setUpSplineIKstretch(getSplineIKJoints,prefix,curve[0],jointAimAxis)
+		splineIK = createIKhandles2(prefix,limbType,'ikSplineSolver',getSplineIKJoints[0],getSplineIKJoints[len(getSplineIKJoints)-1],None,curve[0],groupHandles[2])
+
+	else:
+		print('no extra spline IK handle joints required')
+
+		
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+#START - MAIN COMMANDS////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+sidePrefix = 'L_'
+upAxis = 'z'
+#jointAimAxis = 'x'
+howManyTweenJoints = 0
+howManyKeyJoints = 3
+jointType = 'SPL_'
+limbType = 'bipedLeg' #else 'armOrQuadLeg'
+limbTypeName = 'leg_'
+
+howManyJointsInserted = 7 #4 if there 3 tween control joints; 5 if there 2 tween control joints; 6 if there 1 tween control joints; 7 or 23 if there are no tween control joints
+jointOrientAxis = 'Z'###'.jointOrientZ'
+jointAimAxis = 'x'
+
+#mainCtrl = prefix + 'foot_CTRL'
+#startCtrl = prefix + 'hip_LOC' #'shoulder_LOC'
+#endCtrl = prefix + 'ankle_LOC1' #'wrist_CTRL'
+
+createSplineIK = True
+masterSplineIKCTRL = 'splineIK_CTRL'
+
+sel = maya.cmds.ls(selection = True)
+
+startJoint = selection[0]
+midJoint = sidePrefix + 'knee'
+endJoint = selection[1]
+toeJoint = None
+IKFK_CTRL = ?????
+howwManySplineControlJoints = 0 #this is zero out because the tools do not support splineIK controls betweens the IK and FK tween joints. Number of SplinIK Controls must match the number of Ik and FK joints. 
+howwManySplineTweenJoints = 3
+
+
+
+masterSetUpSplineIK(sel,sidePrefix,upAxis,howManyTweenJoints,howManyKeyJoints,jointType,limbType,limbTypeName,howManyJointsInserted,jointOrientAxis,jointAimAxis,startJoint, midJoint, endJoint,createSplineIK,masterSplineIKCTRL)
+
+	
+setRangeNode = maya.cmds.shadingNode('setRange',n=sidePrefix + 'IKFK_leg_setRange1',au=True)
+
+socketAttribute = '.valueX'
+connectorAttribute = '.IkFk'
+socket = setRangeNode + socketAttribute
+connector = IKFK_CTRL + connectorAttribute
+maya.cmds.connectAttr(connector, socket, force=True)
+socketAttribute= '.valueY'
+socket = setRangeNode + socketAttribute
+maya.cmds.connectAttr(connector, socket, force=True)
+
+connectorAttribute3 = '.outValueX'
+connectorAttribute4 = '.outValueY'
+connectorAttribute7 = '.outValueZ'
+
+visibilityAttribute = '.visibility'
+socketAttribute = '.valueZ'
+connectorAttribute = '.spline'
+socket = setRangeNode + socketAttribute
+connector = IKFK_CTRL + connectorAttribute
+maya.cmds.connectAttr(connector, socket, force=True)
+
+maya.cmds.setAttr(setRangeNode + '.oldMaxX',10)
+maya.cmds.setAttr(setRangeNode + '.oldMaxY',10)
+maya.cmds.setAttr(setRangeNode + '.oldMaxZ',10)
+maya.cmds.setAttr(setRangeNode + '.maxX',1)
+maya.cmds.setAttr(setRangeNode + '.minY',1)
+maya.cmds.setAttr(setRangeNode + '.maxZ',1)
+
+splineIKControls = createSplineIKControls(splineIKCTRLjoints, masterSplineIKCTRL)
+splineIKrotation(splineIKCTRLjoints)
+
+
+
+				

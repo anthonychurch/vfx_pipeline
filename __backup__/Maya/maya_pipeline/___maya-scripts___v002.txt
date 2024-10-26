@@ -1,0 +1,65 @@
+# uiRig_createLocatorsOnJointChain #########################################
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['uiRig_createLocatorsOnJointChain']
+"""
+if imp.find_module('utilitiesUI')[0] :
+    #del utilitiesUI
+    #del sys.modules['utilitiesUI']
+    print(imp.find_module('utilitiesUI')[0])
+    #importlib.reload('utilitiesUI')
+    print(imp.find_module('utilitiesUI')[0])
+    
+if imp.find_module('uiRig_createLocatorsOnJointChain')[0] :
+    #importlib.reload('uiRig_createLocatorsOnJointChain')
+    del sys.modules['uiRig_createLocatorsOnJointChain']
+"""
+
+
+import sys
+import imp
+import importlib
+
+# Import Primary and supporting Modules
+import uiRig_createLocatorsOnJointChain as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can be called correctly
+uiRig.run('uiRig','ui')
+# uiRig_createLocatorsOnJointChain #########################################
+
+
+
+
+
+
+
+
+
+
+# uiRig_appendBipedFootRigAddClaws #########################################
+
+# Clear custom module cache
+del sys.modules['utilitiesUI']
+del sys.modules['utilitiesRigging']
+del sys.modules['uiRig_appendBipedFootRigAddClaws']
+del uiRig_appendBipedFootRigAddClaws
+
+
+import sys
+import imp
+import importlib
+
+# Import Primary and supporting Modules
+import uiRig_appendBipedFootRigAddClaws as uiRig
+import utilitiesUI as ui
+
+
+# Must inject primary uiRig into the native Maya GUI. It must be a String value.
+# The runWindow function requires this injection so it can be called correctly
+uiRig.run('uiRig','ui')
+# uiRig_appendBipedFootRigAddClaws #########################################

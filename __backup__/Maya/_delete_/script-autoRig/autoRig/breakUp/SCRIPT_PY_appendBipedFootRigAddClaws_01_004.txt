@@ -1,0 +1,141 @@
+import maya.cmds
+import random
+import math
+
+def getSuffix(name,tail):
+	newName = name[len(name)-tail:len(name)]	
+	return newName
+
+def createIKhandles(prefix,limbType,type,startJoint,endJoint,pvCtrl,curve,grp):
+	ikh = prefix + limbType + 'ikHandle'
+	if(type != 'ikSplineSolver'):
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type)
+		print('h = ' + str(h))
+		if(type == 'ikRPsolver'):
+			maya.cmds.poleVectorConstraint( pvCtrl, ikh )
+	else:
+		h = maya.cmds.ikHandle(n = ikh, sj = startJoint, ee = endJoint, sol = type, ccv = False, pcv = False, c = curve)
+		print('h = ' + str(h))
+		print('createIKhandles :: grp = ' + str(grp) )
+		maya.cmds.parent(h[0],grp)
+				
+	return h
+
+def checkAttrExist(obj,attr,type,min,max,default,keyable,replace):
+	attrExist = maya.cmds.attributeQuery(attr, node=obj, exists=True)
+	print('checkAttrExist :: attrExist = ' + str(attrExist) + ' : attr = ' + str(attr))
+	newAttr = ''
+	if(attrExist == False):
+		#maya.cmds.deleteAttr(obj, at=attr)
+		
+		newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+		print('checkAttrExist :: newAttr = ' + str(newAttr))
+
+		if(keyable == True):
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+		else:
+			maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+		print('checkAttrExist :: newAttr = ' + str(newAttr) )
+	else:
+		if(replace == True):
+			maya.cmds.deleteAttr(obj, at=attr)
+			newAttr = maya.cmds.addAttr(obj, longName=attr, at=type, defaultValue=default, minValue=min, maxValue=max )
+
+			if(keyable == True):
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=True)
+			else:
+				maya.cmds.setAttr(obj + '.' + attr, e=True, keyable=False, channelBox=True)
+
+			print('checkAttrExist :: newAttr = ' + str(newAttr) )
+
+	return (attrExist,newAttr)
+
+def addClaw(jointArray,rollLoc,pitchAxis,rotateAxis,ctrl):
+	returnArray = []
+
+	getBranchNumber = getSuffix(jointArray[1],1)
+
+	name = jointArray[0] + '_base' + getBranchNumber
+	createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+	whichJoint = jointArray[0]
+	constainLocator = maya.cmds.parentConstraint(whichJoint, createLocator, weight=1 )
+	maya.cmds.delete(constainLocator)
+	maya.cmds.parent(createLocator,rollLoc,a=True)
+	returnArray.append(createLocator)
+	previousLocator = createLocator
+
+	name = jointArray[0] + '_LOC' + '_B' + getBranchNumber
+	rotAttr = jointArray[0] + '_Side'
+	checkAttrExist(ctrl,rotAttr,'double',-90,90,0,True,True)
+	print('rotAttrC = ' + str(rotAttr))
+	pitAttr = jointArray[0] + '_Up'
+	checkAttrExist(ctrl,pitAttr,'double',-90,90,0,True,True)
+	createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+	whichJoint = jointArray[0]
+	constainLocator = maya.cmds.parentConstraint(previousLocator, createLocator, weight=1 )
+	maya.cmds.delete(constainLocator)
+	#footIK = createIKhandles('',name + '_','ikSCsolver',jointArray[0],jointArray[1],False,None,None)[0]
+	maya.cmds.parent(footIK,createLocator,a=True)
+	maya.cmds.parent(createLocator,previousLocator,a=True)
+	returnArray.append(createLocator)
+	destination = createLocator + '.r' + rotateAxis
+	source = ctrl + '.' + rotAttr
+	maya.cmds.connectAttr(source, destination, force=True)
+	destination = createLocator + '.r' + pitchAxis
+	source = ctrl + '.' + pitAttr
+	maya.cmds.connectAttr(source, destination, force=True)
+	previousLocator = createLocator
+
+	name = jointArray[1] + '_LOC' + '_B' + getBranchNumber
+	pitAttr = jointArray[1] + '_Up'
+	checkAttrExist(ctrl,pitAttr,'double',-90,90,0,True,True)
+	createLocator = maya.cmds.spaceLocator(n=name, p=(0,0,0))[0]
+	whichJoint = jointArray[1]
+	constainLocator = maya.cmds.parentConstraint(whichJoint, createLocator, weight=1 )
+	maya.cmds.delete(constainLocator)
+	toeIK = createIKhandles('',name + '_','ikSCsolver',jointArray[1],jointArray[2],False,None,None)[0]
+	maya.cmds.parent(toeIK,createLocator,a=True)
+	maya.cmds.parent(createLocator,previousLocator,a=True)
+	returnArray.append(createLocator)
+	destination = createLocator + '.r' + pitchAxis
+	source = ctrl + '.' + pitAttr
+	maya.cmds.connectAttr(source, destination, force=True)
+	previousLocator = createLocator
+
+	return returnArray
+
+###############################################################################################
+#     SELECT:	
+#	1. SELECT THE ALL ADDITIONAL CLAW JOINTS FROM THE START TO END
+#	2. SELECT roll_LOC
+#	3. MAIN CONTROL
+###############################################################################################
+sel = maya.cmds.ls(selection=True)
+roll_LOC = maya.cmds.ls(selection=True,tail=2)[0]
+mainCtrl = maya.cmds.ls(selection=True,tail=1)[0]
+ikFootJoints = []
+for j in range(0,len(sel)-2,1):
+	ikFootJoints.append(sel[j])
+
+print('roll_LOC = ' + str(roll_LOC))
+print('mainCtrl = ' + str(mainCtrl))
+
+jointAimAxis = 'x'#['x','y','z']
+jointUpAxis = 'y'
+pitchAxis = jointUpAxis # NORMALLY 'X'
+rotateAxis = 'z' # NORMALLY 'Y'
+rollAxis = jointAimAxis # NORMALLY 'Z'
+
+if(pitchAxis == 'z'):
+	if(rotateAxis == 'y'):
+		rollAxis = 'x'
+	else:
+		rollAxis = 'y'
+elif(pitchAxis == 'y'): 
+	if(rotateAxis == 'x'):
+		rollAxis = 'z'
+	else:
+		rollAxis = 'x'
+
+addClaw(ikFootJoints,roll_LOC,pitchAxis,rotateAxis,mainCtrl)

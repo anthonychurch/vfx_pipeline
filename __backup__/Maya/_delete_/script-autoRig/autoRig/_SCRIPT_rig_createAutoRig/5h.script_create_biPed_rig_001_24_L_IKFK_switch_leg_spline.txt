@@ -1,0 +1,67 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//============================================================================================================
+//============================================================================================================
+//SET UP THE IK FK SWITCH FOR SPLINE IK
+//
+//INSTRUCTIONS;
+//1.select parent constraints that are associated with the Arm deform joints and "waist_CTRL" 
+//2.edit the arrays $IK[], $FK[], $IKCTRL[] and $FKCTRL[]
+
+
+string $sel[] = `ls -sl`;
+float $howManyJoints = size($sel);//eg; 5
+string $last[] = `ls -sl -tail 1`;
+float $howManyNodes = ceil($howManyJoints / 3);
+
+
+string $CTRL = $last[0];
+
+
+
+string $setRangeNode = "L_IKFK_leg_setRange1";
+
+
+
+string $socketAttribute1 = ".valueZ";
+string $connectorAttribute1 = ".SpineIkFK";//change this variable
+
+
+
+
+string $socket1 = $setRangeNode + $socketAttribute1;
+string $connector1 = $CTRL + $connectorAttribute1;
+
+connectAttr -force  $connector1  $socket1;
+
+
+string $connectorAttribute3 = ".outValueZ";//change this variable
+
+
+string $visibilityAttribute = ".visibility";
+
+
+for($i = 0; $i < ($howManyJoints - 1); $i++){
+
+			string $socket3 = $sel[$i] + $visibilityAttribute;
+			string $connector3 = $setRangeNode + $connectorAttribute3;
+									
+			connectAttr -force  $connector3  $socket3;//IK
+}
+
+
+
+setAttr ($setRangeNode + ".oldMaxZ") 10;
+setAttr ($setRangeNode + ".maxZ") 1;
+
+
+
+
+
+
+//============================================================================================================
+//============================================================================================================
+
+//END++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//^^^^^^^^^^^^^^^-----TESTED AND WORKS-----^^^^^^^^^^^^^^^!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

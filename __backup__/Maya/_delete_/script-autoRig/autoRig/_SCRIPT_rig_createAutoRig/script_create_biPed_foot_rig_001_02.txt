@@ -1,0 +1,67 @@
+//Find the position for foot, ball, toe and store them
+
+
+//select joints and store in an array. Store how many joints were selected
+//you must select ankle joint
+select -hi;
+string $footJoints[] = `ls -sl -type "joint"`;
+int $howManyJoints = size($footJoints);
+//string $sel[] = `ls -sl`;
+string $prefix = "TEMP_";//"R_";
+/*
+for ($i = 0; $i < $howManyJoints; $i++){
+
+}
+*/
+//tipToe locator and position it
+string $name = "tipToe_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = $howManyJoints - 1;//select tiptoe
+string $whichJoint = $footJoints[$whichJointLocation];
+
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+
+string $previousLocator = $createLocator[0];
+
+
+//heel locator and position it
+string $name = "heel_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 0;//select foot
+string $whichJoint = $footJoints[$whichJointLocation];
+
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+
+string $currentLocator = $createLocator[0];
+
+
+//offset positionof heel
+//setAttr "TEMP_heel_LOC.translateZ" -1;
+string $getCurrentLocatorTZ = `getAttr ($currentLocator + ".translateZ")`;
+//NEED TO FIX###########################################################################################
+//string $pos = $getCurrentLocatorTZ - 1;
+//string $CurrentLocatorTZ = `setAttr ($currentLocator + ".translateZ") ($pos -1)`;
+//NEED TO FIX###########################################################################################
+
+
+
+string $parentLocator = `parent -a $currentLocator $previousLocator`;
+string $previousLocator = $createLocator[0];
+
+
+//heel locator and position it
+string $name = "heel_LOC";
+string $createLocator[] = `spaceLocator -n ($prefix + $name) -p 0 0 0`;
+int $whichJointLocation = 0;//select foot
+string $whichJoint = $footJoints[$whichJointLocation];
+string $constainLocator[] = `pointConstraint -offset 0 0 0 -skip y -weight 1 $whichJoint $createLocator`;
+delete $constainLocator;
+
+
+
+
+string $parentLocator = `parent -a 
+
+

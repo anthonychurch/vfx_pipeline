@@ -1,0 +1,47 @@
+import maya.cmds
+
+def getWStransform(obj):
+	transform = maya.cmds.xform( obj, q=True, ws=True, t=True )
+	return transform
+
+def getWSrotate(obj):
+	rotate = maya.cmds.xform( obj, q=True, ws=True, ro=True )
+	return rotate
+
+def setWStransform(obj,position):
+	maya.cmds.xform( obj, ws=True, t=(position[0],position[1],position[2]) )
+
+def setWSrotate(obj,rotate):
+	maya.cmds.xform( obj, ws=True, ro=(rotate[0],rotate[1],rotate[2]) )
+
+def findNamePrefix(name,token):
+	newName = name[len(token):len(name)]	
+	return newName
+
+grpName = 'copy'
+howManyInstances = 1
+sel = maya.cmds.ls(selection=True)
+getParent = maya.cmds.listRelatives(sel[0], parent=True)
+print ('getparent = ' + str(getParent))
+getParentPos = getWStransform(getParent)
+getParentRot = getWSrotate(getParent)
+
+for i in range(0,howManyInstances,1):
+	sel = maya.cmds.listRelatives(getParent,c=True,f=True)
+	print ('sel = ' + str(sel))
+	selShort = maya.cmds.listRelatives(getParent,c=True)
+	increment = str(i+1)
+	if(i < 10):
+		increment = '0' + str(i+1)
+	grp = maya.cmds.group(em=True,name=grpName + increment + '_grp')
+	setWStransform(grp,getParentPos)
+	setWSrotate(grp,getParentRot)
+	for i in range(0,len(sel),1):
+		maya.cmds.select(sel[i])
+		name = maya.cmds.ls(selection=True)
+		print('name = ' + str(name))
+		maya.cmds.instance()
+        	temp = maya.cmds.ls(selection=True)
+		print ('temp = ' + str(temp[0]))
+        	maya.cmds.parent(temp[0],grp)
+		maya.cmds.rename(temp[0],selShort[i])

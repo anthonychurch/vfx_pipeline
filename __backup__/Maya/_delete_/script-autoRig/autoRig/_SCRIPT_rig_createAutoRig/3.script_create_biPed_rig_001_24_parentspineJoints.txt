@@ -1,0 +1,23 @@
+//START++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//PARENT CONSTRAIN JOINTS================================================================================================================================
+//INSTRUCTIONS;
+//1.
+
+
+
+//START OF SCRIPT
+string $sel[] = `ls -sl`;
+float $howManyJoints = (size($sel));//eg; 5
+int $j;
+string $prefixIK;
+string $prefixFK;
+string $prefixSPL = "SPL_";
+
+
+
+for($i = 0; $i < $howManyJoints; $i){
+
+string $parentConstrain[] = `parentConstraint -mo ($prefixSPL + $sel[$i]) $sel[$i]`;
+
+}
